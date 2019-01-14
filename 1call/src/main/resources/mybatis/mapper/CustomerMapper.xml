@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yanlei.springboot.mapper.myData.CustomerMapper">
+
+    <resultMap id="BaseResultMap" type="com.yanlei.springboot.model.ActiveScheme" >
+        <id column="id" property="id" jdbcType="INTEGER" />
+        <result column="am_id" property="amId" jdbcType="INTEGER" />
+        <result column="matter_name" property="matterName" jdbcType="VARCHAR" />
+        <result column="scheme_name" property="schemeName" jdbcType="VARCHAR" />
+        <result column="special_groups" property="specialGroups" jdbcType="VARCHAR" />
+        <result column="waiter_scheme" property="waiterScheme" jdbcType="VARCHAR" />
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
+        <result column="work_name" property="workName" jdbcType="VARCHAR" />
+        <result column="agree_name" property="agreeName" jdbcType="VARCHAR" />
+        <result column="service_plan" property="servicePlan" jdbcType="VARCHAR" />
+        <result column="integral_qj" property="integralQj" jdbcType="INTEGER" />
+        <result column="integral" property="integral" jdbcType="INTEGER" />
+        <result column="threshold" property="threshold" jdbcType="VARCHAR" />
+        <result column="notice" property="notice" jdbcType="VARCHAR" />
+        <result column="handle" property="handle" jdbcType="VARCHAR" />
+        <result column="people_number" property="peopleNumber" jdbcType="INTEGER" />
+        <result column="execution_time" property="executionTime" jdbcType="VARCHAR" />
+        <result column="execution_date" property="executionDate" jdbcType="VARCHAR" />
+        <result column="execution_start" property="executionStart" jdbcType="VARCHAR" />
+        <result column="content" property="content" jdbcType="VARCHAR" />
+        <result column="scheme_start" property="schemeStart" jdbcType="INTEGER" />
+        <result column="examine_time" property="examineTime" jdbcType="TIMESTAMP" />
+        <result column="end_time" property="endTime" jdbcType="TIMESTAMP" />
+    </resultMap>
+
+    <select id="findAllInStart" parameterType="java.util.Map" resultMap="BaseResultMap">
+        SELECT * FROM active_scheme
+          <where>
+              <if test="waiterScheme != null and waiterScheme != '' ">
+                  AND waiter_scheme LIKE concat(concat("%",#{waiterScheme}),"%")
+              </if>
+              <if test="start != null and start != '' ">
+                  AND scheme_start = #{start}
+              </if>
+              AND scheme_start > #{dayu}
+          </where>
+            ORDER BY id DESC
+    </select>
+
+    <select id="getSchemeLog" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT s.*,l.street AS street FROM (SELECT * FROM active_scheme where id = #{id}) s
+              LEFT JOIN last_person l ON s.id = l.s_id GROUP BY  s.id
+    </select>
+
+    <select id="getActiveSchemeByIds" parameterType="java.lang.String" resultType="java.lang.String" >
+        SELECT s_id FROM last_person WHERE app_start = 1 AND telephone = #{telephone} GROUP BY s_id
+    </select>
+
+    <select id="getMsg" parameterType="java.util.List" resultType="com.yanlei.springboot.model.SchemePerson" >
+        SELECT id,content AS name FROM active_scheme where scheme_start = 3
+        AND waiter_scheme LIKE '%1callAPP通知%' AND id IN
+        <foreach collection="list" item="id" index="index"
+                 open="(" close=")" separator=",">
+            #{id}
+        </foreach>
+    </select>
+
+    <update id="setMsgStart" parameterType="com.yanlei.springboot.model.SchemePerson">
+        UPDATE last_person SET app_start = #{appStart} WHERE telephone = #{telephone} AND s_id = #{id}
+     </update>
+
+    <select id="getActiveSchemeByPersonId" parameterType="java.lang.Integer" resultType="com.yanlei.springboot.model.ActiveScheme" >
+        SELECT ac.id ,ac.waiter_scheme AS waiterScheme FROM last_person la
+          LEFT JOIN active_scheme AS ac on la.s_id = ac.id WHERE la.id = #{id}
+    </select>
+</mapper>

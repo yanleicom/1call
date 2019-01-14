@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yanlei.springboot.mapper.myData.MatterMapper">
+
+
+    <insert id="insertMatter" parameterType="com.yanlei.springboot.controller.Matter" useGeneratedKeys="true" keyProperty="id">
+        insert into active_matter (matter,matter_details,details,dissatisfaction,threshold,street) values
+            (#{matter},#{matterDetails},#{details},#{dissatisfaction},#{threshold},#{street})
+    </insert>
+
+    <update id="updateMatter" parameterType="com.yanlei.springboot.controller.Matter">
+        update active_matter
+        <set >
+            <if test="matter != null" >
+                matter = #{matter,jdbcType=VARCHAR},
+            </if>
+            <if test="dissatisfaction != null" >
+                dissatisfaction = #{dissatisfaction,jdbcType=VARCHAR},
+            </if>
+            <if test="threshold != null" >
+                threshold = #{threshold,jdbcType=VARCHAR},
+            </if>
+            <if test="street != null" >
+                street = #{street,jdbcType=VARCHAR},
+            </if>
+            <if test="matterDetails != null" >
+                matter_details = #{matterDetails,jdbcType=LONGVARCHAR},
+            </if>
+            <if test="details != null" >
+                details = #{details,jdbcType=LONGVARCHAR},
+            </if>
+        </set>
+        where id = #{id,jdbcType=INTEGER}
+    </update>
+
+    <select id="showMatterPerson" parameterType="java.lang.Integer" resultType="com.yanlei.springboot.model.SchemePerson">
+        select id,name,id_number AS idNumber, waiter_name AS waiterName,
+            address,street,community,special_groups AS specialGroups,
+            telephone,username from scheme_person where p_id = #{id}
+    </select>
+</mapper>

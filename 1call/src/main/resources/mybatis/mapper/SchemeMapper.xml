@@ -1,0 +1,385 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yanlei.springboot.mapper.myData.SchemeMapper">
+
+        <resultMap id="BaseResultMap" type="com.yanlei.springboot.model.ActiveScheme" >
+            <id column="id" property="id" jdbcType="INTEGER" />
+            <result column="am_id" property="amId" jdbcType="INTEGER" />
+            <result column="matter_name" property="matterName" jdbcType="VARCHAR" />
+            <result column="scheme_name" property="schemeName" jdbcType="VARCHAR" />
+            <result column="special_groups" property="specialGroups" jdbcType="VARCHAR" />
+            <result column="waiter_scheme" property="waiterScheme" jdbcType="VARCHAR" />
+            <result column="create_time" property="createTime" jdbcType="TIMESTAMP" />
+            <result column="work_name" property="workName" jdbcType="VARCHAR" />
+            <result column="agree_name" property="agreeName" jdbcType="VARCHAR" />
+            <result column="service_plan" property="servicePlan" jdbcType="VARCHAR" />
+            <result column="integral_qj" property="integralQj" jdbcType="INTEGER" />
+            <result column="integral" property="integral" jdbcType="INTEGER" />
+            <result column="threshold" property="threshold" jdbcType="VARCHAR" />
+            <result column="notice" property="notice" jdbcType="VARCHAR" />
+            <result column="handle" property="handle" jdbcType="VARCHAR" />
+            <result column="people_number" property="peopleNumber" jdbcType="INTEGER" />
+            <result column="execution_time" property="executionTime" jdbcType="VARCHAR" />
+            <result column="execution_date" property="executionDate" jdbcType="VARCHAR" />
+            <result column="execution_start" property="executionStart" jdbcType="VARCHAR" />
+            <result column="content" property="content" jdbcType="VARCHAR" />
+            <result column="scheme_start" property="schemeStart" jdbcType="INTEGER" />
+            <result column="examine_time" property="examineTime" jdbcType="TIMESTAMP" />
+            <result column="end_time" property="endTime" jdbcType="TIMESTAMP" />
+        </resultMap>
+
+    <insert id="addActiveScheme" parameterType="com.yanlei.springboot.model.ActiveScheme" useGeneratedKeys="true" keyProperty="id">
+        insert into active_scheme (am_id, matter_name,
+        scheme_name, special_groups, waiter_scheme,
+        create_time, work_name, agree_name,
+        service_plan, integral_qj, integral,
+        threshold, notice, handle,
+        execution_time, execution_date,
+        execution_start,content,scheme_start,examine_time)
+        values (#{amId,jdbcType=INTEGER}, #{matterName,jdbcType=VARCHAR},
+        #{schemeName,jdbcType=VARCHAR}, #{specialGroups,jdbcType=VARCHAR}, #{waiterScheme,jdbcType=VARCHAR},
+        #{createTime,jdbcType=TIMESTAMP}, #{workName,jdbcType=VARCHAR}, #{agreeName,jdbcType=VARCHAR},
+        #{servicePlan,jdbcType=VARCHAR}, #{integralQj,jdbcType=INTEGER}, #{integral,jdbcType=INTEGER},
+        #{threshold,jdbcType=VARCHAR}, #{notice,jdbcType=VARCHAR}, #{handle,jdbcType=VARCHAR},
+        #{executionTime,jdbcType=VARCHAR}, #{executionDate,jdbcType=VARCHAR},#{executionStart,jdbcType=VARCHAR},
+        #{content,jdbcType=VARCHAR},#{schemeStart,jdbcType=INTEGER},#{examineTime,jdbcType=TIMESTAMP})
+    </insert>
+
+    <select id="findMatterName" parameterType="com.yanlei.springboot.model.ActiveMatter"
+            resultType="com.yanlei.springboot.model.ActiveMatter">
+        SELECT id,matter from active_matter where matter LIKE concat(concat("%",#{matter}),"%")
+        AND street = #{street} LIMIT 5
+    </select>
+
+    <!-- 积分查询接口 已修改 -->
+    <select id="getMatterPerson" parameterType="com.yanlei.springboot.model.ActiveScheme"
+            resultType="com.yanlei.springboot.model.Integral">
+        SELECT MAX(integral) maxIntegral ,COUNT(0) peopleNmber from scheme_person
+        <where>
+            <if test="integralQj != null and integralQj != '' ">
+                AND integral >= #{integralQj}
+            </if>
+            <if test="specialGroups != null and specialGroups != '' ">
+                AND (
+                <foreach collection="list" item="item" separator=" or " index="index">
+                    special_groups LIKE concat(concat("%",#{item}),"%")
+                </foreach>
+                )
+            </if>
+            AND p_id = #{amId}
+        </where>
+    </select>
+
+    <select id="getSchemeById" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT * from active_scheme where id = #{id}
+    </select>
+
+    <!-- 修改方案 查询方案根据积分和特殊人群最后得到符合人群 已修改 -->
+    <select id="findSchemePerson" parameterType="com.yanlei.springboot.model.ActiveScheme" resultType="com.yanlei.springboot.model.SchemePerson">
+        SELECT id,name,id_number AS idNumber,address,special_groups AS specialGroups,street,community,
+            waiter_name AS waiterName,telephone,username,integral,p_id AS pId, insert_time
+            AS insertTime FROM scheme_person
+                <where>
+                  <if test="integralQj !=null and integralQj != '' ">
+                    AND integral >= #{integralQj}
+                  </if>
+                  <if test="specialGroups!= null and specialGroups != '' ">
+                      AND (
+                      <foreach collection="list" item="item" separator=" or " index="index">
+                          special_groups LIKE concat(concat("%",#{item}),"%")
+                      </foreach>
+                      )
+                  </if>
+                    AND p_id = #{amId}
+                </where>
+    </select>
+
+
+    <update id="updateScheme" parameterType="com.yanlei.springboot.model.ActiveScheme" >
+        update active_scheme
+        <set >
+            <if test="amId != null" >
+                am_id = #{amId,jdbcType=INTEGER},
+            </if>
+            <if test="matterName != null" >
+                matter_name = #{matterName,jdbcType=VARCHAR},
+            </if>
+            <if test="schemeName != null" >
+                scheme_name = #{schemeName,jdbcType=VARCHAR},
+            </if>
+            <if test="specialGroups != null" >
+                special_groups = #{specialGroups,jdbcType=VARCHAR},
+            </if>
+            <if test="waiterScheme != null" >
+                waiter_scheme = #{waiterScheme,jdbcType=VARCHAR},
+            </if>
+            <if test="createTime != null" >
+                create_time = #{createTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="workName != null" >
+                work_name = #{workName,jdbcType=VARCHAR},
+            </if>
+            <if test="agreeName != null" >
+                agree_name = #{agreeName,jdbcType=VARCHAR},
+            </if>
+            <if test="servicePlan != null" >
+                service_plan = #{servicePlan,jdbcType=VARCHAR},
+            </if>
+            <if test="integralQj != null" >
+                integral_qj = #{integralQj,jdbcType=INTEGER},
+            </if>
+            <if test="integral != null" >
+                integral = #{integral,jdbcType=INTEGER},
+            </if>
+            <if test="threshold != null" >
+                threshold = #{threshold,jdbcType=VARCHAR},
+            </if>
+            <if test="notice != null" >
+                notice = #{notice,jdbcType=VARCHAR},
+            </if>
+            <if test="handle != null" >
+                handle = #{handle,jdbcType=VARCHAR},
+            </if>
+            <if test="executionTime != null" >
+                execution_time = #{executionTime,jdbcType=VARCHAR},
+            </if>
+            <if test="executionDate != null" >
+                execution_date = #{executionDate,jdbcType=VARCHAR},
+            </if>
+            <if test="executionStart != null" >
+                execution_start = #{executionStart,jdbcType=VARCHAR},
+            </if>
+            <if test="content != null" >
+                content = #{content,jdbcType=VARCHAR},
+            </if>
+            <if test="schemeStart != null" >
+                scheme_start = #{schemeStart,jdbcType=INTEGER},
+            </if>
+        </set>
+        where id = #{id,jdbcType=INTEGER}
+    </update>
+
+    <update id="setSchemeStart" parameterType="com.yanlei.springboot.model.ActiveScheme">
+        update active_scheme set scheme_start = #{schemeStart},examine_time = #{examineTime} where id = #{id}
+    </update>
+
+    <insert id="insertLastPerson" parameterType="java.util.List" >
+      insert into last_person (s_id, name,
+          id_number, waiter_name, address,
+          street, community, special_groups,
+          telephone, username, integral,
+          p_id,insert_time)
+          VALUES
+        <foreach collection="list" item="item" separator=",">
+        (#{item.sId,jdbcType=INTEGER}, #{item.name,jdbcType=VARCHAR},
+        #{item.idNumber,jdbcType=VARCHAR}, #{item.waiterName,jdbcType=VARCHAR}, #{item.address,jdbcType=VARCHAR},
+        #{item.street,jdbcType=VARCHAR}, #{item.community,jdbcType=VARCHAR}, #{item.specialGroups,jdbcType=VARCHAR},
+        #{item.telephone,jdbcType=VARCHAR}, #{item.username,jdbcType=VARCHAR}, #{item.integral,jdbcType=INTEGER},
+        #{item.pId,jdbcType=INTEGER},#{item.insertTime,jdbcType=TIMESTAMP})
+        </foreach>
+    </insert>
+
+    <select id="findWeekJob" parameterType="com.yanlei.springboot.model.ActiveScheme" resultMap="BaseResultMap">
+        SELECT * from active_scheme WHERE execution_time = #{executionTime} AND
+            execution_date = #{executionDate} AND execution_start = #{executionStart} and (scheme_start = '3' OR scheme_start = '4')
+    </select>
+
+    <select id="getLastPersonMaxTime" parameterType="com.yanlei.springboot.model.ActiveScheme" resultType="com.yanlei.springboot.model.SchemePerson">
+        SELECT MAX(insert_time) AS insertTime from last_person where p_id = #{amId} AND s_id = #{id}
+    </select>
+
+    <!-- 定时任务查询新增人口信息 未修改 正在修改 -->
+    <select id="findAddSchemePerson" parameterType="com.yanlei.springboot.model.ActiveScheme" resultType="com.yanlei.springboot.model.SchemePerson">
+        SELECT id,name,id_number AS idNumber,address,special_groups AS specialGroups,street,community,
+        waiter_name AS waiterName,telephone,username,integral,p_id AS pId,insert_time
+        AS insertTime FROM scheme_person
+        <where>
+            <if test="integralQj !=null and integralQj != '' ">
+                AND integral >= #{integralQj}
+            </if>
+            <if test="specialGroups!= null and specialGroups != '' ">
+                AND (
+                <foreach collection="list" item="item" separator=" or " index="index">
+                    special_groups LIKE concat(concat("%",#{item}),"%")
+                </foreach>
+                )
+            </if>
+            AND p_id = #{amId} AND insert_time > #{endTime}
+        </where>
+    </select>
+
+    <update id="addPeopleNumber" parameterType="com.yanlei.springboot.model.ActiveScheme" >
+        UPDATE active_scheme SET people_number = #{peopleNumber} WHERE id = #{id}
+    </update>
+
+    <select id="getLastPersonForStart" parameterType="java.util.Map" resultType="com.yanlei.springboot.model.SchemePerson">
+        SELECT id,name,id_number AS idNumber,address,special_groups AS specialGroups,
+            waiter_name AS waiterName,telephone,username,integral FROM last_person
+            <where>
+                <if test="start!=null and start!= '' ">
+                 AND start = #{start}
+                </if>
+                AND s_id = #{id}
+            </where>
+    </select>
+
+    <select id="getPersonToAppAndMsg" parameterType="java.util.Map" resultType="com.yanlei.springboot.model.SchemePerson">
+        SELECT id,name,id_number AS idNumber,address,special_groups AS specialGroups,
+        waiter_name AS waiterName,telephone,username,integral FROM last_person
+        <where>
+            <if test="start!=null and start!= '' ">
+                AND msg_start = #{start}
+            </if>
+            AND s_id = #{id}
+        </where>
+    </select>
+
+    <select id="getAppAndMsgAndTelephone" parameterType="java.util.Map" resultType="com.yanlei.springboot.model.SchemePerson">
+        SELECT id,name,id_number AS idNumber,address,special_groups AS specialGroups,
+        waiter_name AS waiterName,telephone,username,integral FROM last_person
+        <where>
+            <if test="start!=null and start == '1'.toString() ">
+                AND (msg_start = #{start} OR telephone_start = #{start})
+            </if>
+            <if test="start!=null and start == '2'.toString() ">
+                AND msg_start = #{start} AND telephone_start = #{start}
+            </if>
+            AND s_id = #{id}
+        </where>
+    </select>
+
+    <select id="getAppAndMsgOrAndCustomer" parameterType="java.util.Map" resultType="com.yanlei.springboot.model.SchemePerson">
+        SELECT id,name,id_number AS idNumber,address,special_groups AS specialGroups,
+        waiter_name AS waiterName,telephone,username,integral,customer_start AS customerStart FROM last_person
+        <where>
+            <if test="start!=null and start == '1'.toString() ">
+                AND (msg_start = #{start} OR customer_start = #{start})
+            </if>
+            <if test="start!=null and start == '2'.toString() ">
+                AND msg_start = #{start} AND customer_start = #{start}
+            </if>
+            AND s_id = #{id}
+        </where>
+    </select>
+
+    <select id="getPersonToStartAll" parameterType="java.util.Map" resultType="com.yanlei.springboot.model.SchemePerson">
+        SELECT id,name,id_number AS idNumber,address,special_groups AS specialGroups,
+        waiter_name AS waiterName,telephone,username,integral,customer_start AS customerStart FROM last_person
+        <where>
+            <if test="start!=null and start == '1'.toString() ">
+                AND (msg_start = #{start} OR telephone_start = #{start} OR customer_start = #{start})
+            </if>
+            <if test="start!=null and start == '2'.toString() ">
+                AND msg_start = #{start} AND telephone_start = #{start} AND customer_start = #{start}
+            </if>
+            AND s_id = #{id}
+        </where>
+    </select>
+
+    <update id="setLastPersonMsgStart" parameterType="java.util.Map" >
+        UPDATE last_person SET msg_start = #{start} WHERE s_id = #{id} AND (
+          <foreach collection="tel" item="item" index="index" separator=" or ">
+               telephone = #{item}
+          </foreach>
+        )
+    </update>
+
+    <update id="setLastPersonMsgStart2" parameterType="java.util.Map" >
+        UPDATE last_person SET msg_start = #{start} WHERE s_id = #{id} AND (
+        <foreach collection="tel" item="item" index="index" separator=" or ">
+            id_number = #{item}
+        </foreach>
+        )
+    </update>
+
+    <update id="setSchemeStartOver" parameterType="java.util.Map" >
+        UPDATE active_scheme SET scheme_start = #{start},end_time = #{endTime} WHERE id = #{id}
+    </update>
+
+    <update id="setLastPersonMsgAndTelStart" parameterType="java.util.Map">
+        UPDATE last_person SET msg_start = #{start},telephone_start = #{start} WHERE s_id = #{id} AND (
+        <foreach collection="tel" item="item" index="index" separator=" or ">
+            telephone = #{item}
+        </foreach>
+        )
+    </update>
+
+    <select id="getSchemeSpecialGroupsPerson" parameterType="com.yanlei.springboot.model.ActiveScheme" resultType="java.lang.String">
+        SELECT id_number FROM scheme_person
+            <where>
+                AND p_id = #{amId}
+                <if test="specialGroups!= null and specialGroups != '' ">
+                    AND (
+                    <foreach collection="list" item="item" separator=" or " index="index">
+                        special_groups LIKE concat(concat("%",#{item}),"%")
+                    </foreach>
+                    )
+                </if>
+           </where>
+    </select>
+
+    <select id="getSchemePersonByIdNumber" parameterType="com.yanlei.springboot.model.ActiveScheme"
+            resultType="com.yanlei.springboot.model.SchemePerson">
+        SELECT id,name,id_number AS idNumber,address,special_groups AS specialGroups,street,community,
+            waiter_name AS waiterName,telephone,username,integral,p_id AS pId, insert_time
+            AS insertTime FROM scheme_person
+            <where>
+                AND p_id = #{amId}
+                AND (
+                <foreach collection="list" item="item" separator=" or " index="index">
+                    id_number = #{item}
+                </foreach>
+                )
+            </where>
+    </select>
+
+
+    <select id="findAddSchemePerson2" parameterType="com.yanlei.springboot.model.ActiveScheme" resultType="java.lang.String">
+        SELECT id_number AS idNumber FROM scheme_person
+        <where>
+            <if test="specialGroups!= null and specialGroups != '' ">
+                AND (
+                <foreach collection="list" item="item" separator=" or " index="index">
+                    special_groups LIKE concat(concat("%",#{item}),"%")
+                </foreach>
+                )
+            </if>
+            AND p_id = #{amId} AND insert_time > #{endTime}
+        </where>
+    </select>
+
+    <select id="getLastPerson2" parameterType="java.util.Map" resultType="com.yanlei.springboot.model.SchemePerson">
+      SELECT id,s_id AS sId,name,id_number AS idNumber,address,special_groups AS specialGroups,
+            waiter_name AS waiterName,telephone,username,integral,app_start AS appStart,
+            msg_start AS msgStart,telephone_start AS telephoneStart, customer_start AS
+            customerStart FROM last_person WHERE s_id = #{id} AND (
+        <foreach collection="tel" item="item" index="index" separator=" or ">
+            id_number = #{item}
+        </foreach>
+        )
+    </select>
+
+    <update id="setLastPersonMsgAndTelStart2" parameterType="java.util.Map" >
+        UPDATE last_person SET msg_start = #{start},telephone_start = #{start} WHERE s_id = #{id} AND (
+        <foreach collection="tel" item="item" index="index" separator=" or ">
+            id_number = #{item}
+        </foreach>
+        )
+    </update>
+
+    <select id="findSchemePerson2" parameterType="com.yanlei.springboot.model.ActiveScheme" resultType="java.lang.String">
+        SELECT id_number AS idNumber FROM scheme_person
+        <where>
+            <if test="specialGroups!= null and specialGroups != '' ">
+                AND (
+                <foreach collection="list" item="item" separator=" or " index="index">
+                    special_groups LIKE concat(concat("%",#{item}),"%")
+                </foreach>
+                )
+            </if>
+            AND p_id = #{amId}
+        </where>
+    </select>
+</mapper>
