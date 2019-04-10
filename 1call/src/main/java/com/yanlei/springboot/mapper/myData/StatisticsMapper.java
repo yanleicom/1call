@@ -2,6 +2,7 @@ package com.yanlei.springboot.mapper.myData;
 
 import com.yanlei.springboot.model.ActiveMatter;
 import com.yanlei.springboot.model.ActiveScheme;
+import com.yanlei.springboot.model.Integral;
 import com.yanlei.springboot.model.SchemePerson;
 import org.apache.ibatis.annotations.Select;
 import org.springframework.stereotype.Repository;
@@ -59,4 +60,15 @@ public interface StatisticsMapper {
             "WHERE matter_name = #{matter1}) ac LEFT JOIN \n" +
             "last_person la on ac.id=la.s_id WHERE la.`name` IS NOT NULL")
     List<SchemePerson> getMatterByName(String matter1);
+
+    int insertNotice(List<Integral> list);
+
+    @Select("SELECT id,notice,time FROM notice GROUP BY id DESC LIMIT 6")
+    List<Integral> getNotice();
+
+//    @Select("SELECT id,waiter_scheme AS waiterScheme,scheme_start AS schemeStart,matter_name AS matterName " +
+//            "FROM active_scheme WHERE scheme_start ='3' OR scheme_start ='4' ORDER BY examine_time DESC LIMIT 1")
+//    ActiveScheme getSchemeStartThreeOrFour();
+
+
 }

@@ -6,6 +6,7 @@ import com.yanlei.springboot.model.Integral;
 import com.yanlei.springboot.model.SchemePerson;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 import org.springframework.stereotype.Repository;
 
 import java.util.HashMap;
@@ -105,4 +106,26 @@ public interface SchemeMapper {
     int setLastPersonMsgAndTelStart2(HashMap<String, Object> callMap);
 
     List<String> findSchemePerson2(ActiveScheme scheme);
+
+    @Select("SELECT id,scheme_name AS schemeName,create_time AS createTime,work_name AS workName," +
+            "agree_name AS agreeName,execution_time AS executionTime,execution_date AS executionDate,execution_start AS executionStart from active_scheme where execution_date  IS NOT NULL AND execution_date <> ''" +
+            "AND execution_start IS NOT NULL AND execution_start <> '' AND execution_time IS NOT NULL AND execution_time <> '' ORDER BY id DESC")
+    List<ActiveScheme> findAllQuartz(String start);
+
+    //年后修改组合状态
+    int setLastPersonTelStart(HashMap<String, Object> overStart);
+
+    List<SchemePerson> getPersonToTelephoneAndCustomer(Map<String, Object> maps);
+
+    List<SchemePerson> getPersonToTelephone(Map<String, Object> maps);
+
+    List<SchemePerson> getPersonToCustomer(Map<String, Object> maps);
+
+    int setLastPersonTelStart2(HashMap<String, Object> telMap);
+
+    @Select("SELECT COUNT(0) FROM active_scheme WHERE as_id = #{id} ")
+    int getQuartzCount(Integer id);
+
+    @Update("UPDATE active_scheme SET people_number = #{peopleNumber} WHERE id = #{id}")
+    void setSchemePersonNumber(Map<String, Integer> map);
 }

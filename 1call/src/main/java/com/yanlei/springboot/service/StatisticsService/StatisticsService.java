@@ -14,4 +14,6 @@ public interface StatisticsService {
     String getSchemeStart();
 
     String getMatterPerson();
+
+    int insertNotice(Integer id);
 }

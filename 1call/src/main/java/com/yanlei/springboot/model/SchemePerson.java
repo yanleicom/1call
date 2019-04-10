@@ -23,6 +23,7 @@ public class SchemePerson {
     private Integer integral; //积分
     private Integer pId; //主动事项id(外键关联)
     private Date insertTime; //人员插入时间
+    private String source;//信息来源(人口信息库和街道两种)
     private String appStart; //人员办理状态 app状态
     private String msgStart; //人员办理状态 短信状态
     private String telephoneStart; //人员办理状态 电话状态
@@ -171,6 +172,14 @@ public class SchemePerson {
 
     public void setCustomerStart(String customerStart) {
         this.customerStart = customerStart;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
     }
 
     @Override

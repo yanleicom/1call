@@ -67,7 +67,7 @@
      </update>
 
     <select id="getActiveSchemeByPersonId" parameterType="java.lang.Integer" resultType="com.yanlei.springboot.model.ActiveScheme" >
-        SELECT ac.id ,ac.waiter_scheme AS waiterScheme FROM last_person la
+       SELECT ac.id ,ac.waiter_scheme AS waiterScheme,ac.matter_name AS matterName FROM last_person la
           LEFT JOIN active_scheme AS ac on la.s_id = ac.id WHERE la.id = #{id}
     </select>
 </mapper>

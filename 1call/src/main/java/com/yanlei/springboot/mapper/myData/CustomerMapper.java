@@ -2,6 +2,7 @@ package com.yanlei.springboot.mapper.myData;
 
 import com.yanlei.springboot.model.ActiveScheme;
 import com.yanlei.springboot.model.SchemePerson;
+import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 import org.springframework.stereotype.Repository;
 
@@ -30,4 +31,10 @@ public interface CustomerMapper {
     void setMsgStart(SchemePerson schemePerson);
 
     ActiveScheme getActiveSchemeByPersonId(Integer id);
+
+    @Update("UPDATE active_scheme SET execution_start = #{executionStart} WHERE id = #{id}")
+    void overScheme(HashMap<String, Object> map);
+
+    @Select("SELECT id,name,id_number AS idNumber from last_person WHERE id = #{id}")
+    SchemePerson findPersonById(Integer id);
 }

@@ -1,18 +1,15 @@
 package com.yanlei.springboot.controller;
 
-import com.alibaba.fastjson.JSON;
 import com.github.pagehelper.Page;
 import com.yanlei.springboot.service.CustomerService.CustomerService;
 import com.yanlei.springboot.util.CreateOneDoUtil;
 import com.yanlei.springboot.util.PageHelperUtil;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletResponse;
-import java.util.List;
 import java.util.Map;
 
 import static com.yanlei.springboot.controller.Exchange.msgUrl;
@@ -97,5 +94,16 @@ public class Customer {
     public String getMsg(String telephone){
            String msg = customerService.getMsg(telephone);
            return msg;
+    }
+
+    /**
+    * @Author: x
+    * @Date: Created in 14:54 2019/2/14
+     * 方案终止 传入方案id,终止下一次自动执行方案
+    */
+    @GetMapping("/overSchemeById")
+    public String overScheme(Integer id){
+        String result = customerService.overScheme(id);
+        return result;
     }
 }

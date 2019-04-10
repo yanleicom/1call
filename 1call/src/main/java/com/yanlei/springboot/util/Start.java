@@ -16,7 +16,7 @@ public class Start {
         //1call app消息推送
         APPSTART("1callAPP通知"),
         //短信通知
-        MSGSTART("短信通知"),
+        MSGSTART("短信通知服务"),
         //主动电话通知服务
         TELEPHONESTART("主动电话通知服务"),
         //主动办理服务

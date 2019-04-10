@@ -4,7 +4,9 @@ import com.alibaba.fastjson.JSON;
 import com.github.pagehelper.Page;
 import com.yanlei.springboot.mapper.myData.CustomerMapper;
 import com.yanlei.springboot.mapper.myData.SchemeMapper;
+import com.yanlei.springboot.mapper.myData.StatisticsMapper;
 import com.yanlei.springboot.model.ActiveScheme;
+import com.yanlei.springboot.model.Integral;
 import com.yanlei.springboot.model.SchemePerson;
 import com.yanlei.springboot.service.CustomerService.CustomerService;
 import com.yanlei.springboot.util.Start;
@@ -29,6 +31,9 @@ public class CustomerServiceImpl implements CustomerService {
     @Autowired
     SchemeMapper schemeMapper;
 
+    @Autowired
+    StatisticsMapper statisticsMapper;
+
     @Override
     public Map<String, Object> getSchemeShowCustomer(String start) {
         //主动办客服只有在选择服务方式为 : 主动办理服务 时才显示这类方案
@@ -50,6 +55,14 @@ public class CustomerServiceImpl implements CustomerService {
         // 需要修改状态来查看方案,根据方案服务方式来查看人员通知状态,根据人员状态来修改方案为已办结
         if (result>0){
             ActiveScheme activeScheme = customerMapper.getActiveSchemeByPersonId(id);
+            SchemePerson findPerson = customerMapper.findPersonById(id);
+            List<Integral> list = new ArrayList<>();
+            StringBuffer sbf = new StringBuffer();
+            sbf.append("已").append(Start.contentStart.CUSTOMERSTART.getValue()).append(findPerson.getName())
+                    .append("办理").append(activeScheme.getMatterName());
+            Integral integral = new Integral(sbf.toString(),new Date());
+            list.add(integral);
+            int resule = statisticsMapper.insertNotice(list);
             if (StringUtils.isNotBlank(activeScheme.getWaiterScheme())){
                 String[] split = activeScheme.getWaiterScheme().split(",");
                 List<SchemePerson> lastPerson = schemeMapper.getLastPerson(activeScheme.getId());
@@ -67,6 +80,19 @@ public class CustomerServiceImpl implements CustomerService {
                         if (person.getMsgStart().equals(Start.contentStart.CODE_YES.getValue()) &&
                                 person.getTelephoneStart().equals(Start.contentStart.CODE_YES.getValue()) &&
                                 person.getCustomerStart().equals(Start.contentStart.CODE_YES.getValue())){
+                            num++;
+                        }
+                    }
+                }else if (split.length==2 && split[1].equals(Start.contentStart.CUSTOMERSTART.getValue())){
+                    for (SchemePerson person : lastPerson) {
+                        if (person.getTelephoneStart().equals(Start.contentStart.CODE_YES.getValue()) &&
+                                person.getCustomerStart().equals(Start.contentStart.CODE_YES.getValue())){
+                            num++;
+                        }
+                    }
+                }else if (split.length==1 && split[0].equals(Start.contentStart.CUSTOMERSTART.getValue())){
+                    for (SchemePerson person : lastPerson) {
+                        if (person.getCustomerStart().equals(Start.contentStart.CODE_YES.getValue())){
                             num++;
                         }
                     }
@@ -114,6 +140,24 @@ public class CustomerServiceImpl implements CustomerService {
             map.put("方案人数",lastPerson.size());
             map.put("办理人数",lastPerson.size());
             map.put("通知人数",i);
+        }else if (split.length == 2 && lastPerson.size()>0 && split[1].equals(Start.contentStart.CUSTOMERSTART.getValue())){
+            for (SchemePerson person : lastPerson) {
+                if (person.getTelephoneStart().equals(value) && person.getCustomerStart().equals(value)){
+                    i++;
+                }
+            }
+            map.put("方案人数",lastPerson.size());
+            map.put("办理人数",lastPerson.size());
+            map.put("通知人数",i);
+        }else if(split.length == 1 && lastPerson.size()>0 && split[0].equals(Start.contentStart.CUSTOMERSTART.getValue())){
+            for (SchemePerson person : lastPerson) {
+                if (person.getCustomerStart().equals(value)){
+                    i++;
+                }
+            }
+            map.put("方案人数",lastPerson.size());
+            map.put("办理人数",lastPerson.size());
+            map.put("通知人数",i);
         }else {
             map.put("方案人数",i);
             map.put("办理人数",i);
@@ -150,5 +194,18 @@ public class CustomerServiceImpl implements CustomerService {
         map.put("code",500);
         map.put("msg",null);
         return JSON.toJSONString(map);
+    }
+
+    @Override
+    public String overScheme(Integer id) {
+        ActiveScheme schemeById = schemeMapper.getSchemeById(id);
+        if (schemeById.getId()== null) return "未查询到方案";
+        if (schemeById.getExecutionStart() == null || schemeById.getExecutionDate() ==null
+                || schemeById.getExecutionTime() == null) return "不是定时方案无法终止";
+        HashMap<String,Object> map = new HashMap<>();
+        map.put("id",id);
+        map.put("executionStart",schemeById.getExecutionStart()+"终止");
+        customerMapper.overScheme(map);
+        return "success";
     }
 }

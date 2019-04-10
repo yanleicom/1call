@@ -7,6 +7,7 @@ import com.yanlei.springboot.model.ActiveMatter;
 import com.yanlei.springboot.model.ActiveScheme;
 import com.yanlei.springboot.service.MatterService.MatterService;
 import com.yanlei.springboot.service.SchemeService.SchemeService;
+import com.yanlei.springboot.service.StatisticsService.StatisticsService;
 import com.yanlei.springboot.util.CookieUtil;
 import com.yanlei.springboot.util.HttpDataUtil;
 import com.yanlei.springboot.util.JsonMethod;
@@ -15,10 +16,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -37,7 +35,8 @@ public class Scheme {
     SchemeService schemeService;
     @Autowired
     MatterService matterService;
-
+    @Autowired
+    StatisticsService statisticsService;
 
     /**
      * @Author: x
@@ -61,12 +60,12 @@ public class Scheme {
      * 根据id获得符合人员积分,根据积分和特殊人群过滤符合人员清单回显 符合人员人数和占比
      * 下面三个版本2.0修改
      */
-    @PostMapping("/getIntegral")
-    public String getIntegral(ActiveScheme activeScheme,HttpServletResponse response){
-        response.addHeader("Access-Control-Allow-Origin", "*");
-        String result = schemeService.getMatterPerson(activeScheme);
-        return result;
-    }
+//    @PostMapping("/getIntegral")
+//    public String getIntegral(ActiveScheme activeScheme,HttpServletResponse response){
+//        response.addHeader("Access-Control-Allow-Origin", "*");
+//        String result = schemeService.getMatterPerson(activeScheme);
+//        return result;
+//    }
 
 
     /**
@@ -78,38 +77,38 @@ public class Scheme {
      * @param activeScheme
      * @return
      */
-    @PostMapping("/addActiveScheme")
-    public String addActiveScheme(ActiveScheme activeScheme,HttpServletResponse response,HttpServletRequest request){
-        response.addHeader("Access-Control-Allow-Origin", "*");
-        if (activeScheme.getAmId() == null) return "请传入修改id";
-        ActiveMatter matterById = matterService.getMatterById(activeScheme.getAmId());
-        //activeScheme.setAmId(activeScheme.getAmId());//关联id
-        if (matterById.getId() == null) return "没有关联事项";
-        activeScheme.setMatterName(matterById.getMatter()); //事项名称 怕事项名称在保存是修改不完全匹配
-        activeScheme.setCreateTime(new Date());//创建时间
-        String name = CookieUtil.getUid(request, "name"); //去登入用户信息
-        //报批人姓名 需对接1call办获取工作人员姓名和提交审核人员姓名~~
-        if (StringUtils.isEmpty(activeScheme.getWorkName()))activeScheme.setWorkName(name);
-        if (StringUtils.isEmpty(activeScheme.getAgreeName()))activeScheme.setAgreeName("刘佳明");//审批人姓名
-        activeScheme.setSchemeStart(1); //方案状态(1:待报批 , 2:已报批 , 3:已批准 , 4:已办结)',
-        if (activeScheme.getIntegral() == null) activeScheme.setIntegral(0); //积分扣减 不传默认0分
-        String result = schemeService.addActiveScheme(activeScheme);
-        return result;
-    }
+//    @PostMapping("/addActiveScheme")
+//    public String addActiveScheme(ActiveScheme activeScheme,HttpServletResponse response,HttpServletRequest request){
+//        response.addHeader("Access-Control-Allow-Origin", "*");
+//        if (activeScheme.getAmId() == null) return "请传入修改id";
+//        ActiveMatter matterById = matterService.getMatterById(activeScheme.getAmId());
+//        //activeScheme.setAmId(activeScheme.getAmId());//关联id
+//        if (matterById.getId() == null) return "没有关联事项";
+//        activeScheme.setMatterName(matterById.getMatter()); //事项名称 怕事项名称在保存是修改不完全匹配
+//        activeScheme.setCreateTime(new Date());//创建时间
+//        String name = CookieUtil.getUid(request, "name"); //去登入用户信息
+//        //报批人姓名 需对接1call办获取工作人员姓名和提交审核人员姓名~~
+//        if (StringUtils.isEmpty(activeScheme.getWorkName()))activeScheme.setWorkName(name);
+//        if (StringUtils.isEmpty(activeScheme.getAgreeName()))activeScheme.setAgreeName("刘佳明");//审批人姓名
+//        activeScheme.setSchemeStart(1); //方案状态(1:待报批 , 2:已报批 , 3:已批准 , 4:已办结)',
+//        if (activeScheme.getIntegral() == null) activeScheme.setIntegral(0); //积分扣减 不传默认0分
+//        String result = schemeService.addActiveScheme(activeScheme);
+//        return result;
+//    }
 
     /**
      * @Author: x
      * @Date: Created in 14:22 2018/11/15
      * 主动办方案修改接口  如果修改事项名称 需要走事项名称搜索查询道本平台对应事项id(amid必传)!
      */
-    @PostMapping("/updateScheme")
-    public String updateScheme(ActiveScheme activeScheme,HttpServletResponse response){
-        response.addHeader("Access-Control-Allow-Origin", "*");
-        if (activeScheme.getId() == null) return "请传入修改id";
-        int result = schemeService.updateScheme(activeScheme);
-        if (result>0)return "success";
-        return "error";
-    }
+//    @PostMapping("/updateScheme")
+//    public String updateScheme(ActiveScheme activeScheme,HttpServletResponse response){
+//        response.addHeader("Access-Control-Allow-Origin", "*");
+//        if (activeScheme.getId() == null) return "请传入修改id";
+//        int result = schemeService.updateScheme(activeScheme);
+//        if (result>0)return "success";
+//        return "error";
+//    }
 
 
 
@@ -117,7 +116,7 @@ public class Scheme {
     * @Author: x
     * @Date: Created in 14:52 2018/11/15
      * 分页展示已新建主动办方案 其中分4个状态
-     * start : 方案状态(1:待报批 , 2:已报批 , 3:已批准 , 4:已办结)',
+     * start : 方案状态(1:待报批 , 2:已报批 , 3:已批准 , 4:已办结) ', 2019/2/14 新增状态5: 定时方案
     */
     @PostMapping("/findScheme/getAll") //分页查看事项
     public Map<String, Object> getMatterAll(String pages, String rows, String start, HttpServletResponse response) {
@@ -129,7 +128,14 @@ public class Scheme {
             map.put("total", list.getTotal());
             map.put("rows", list.getResult());
             return map;
-        }else {
+        }else if (start.equals("5")){
+            Page page = PageHelperUtil.getPage(pages, rows);
+            Page list = (Page) schemeService.findAllQuartz(start);
+            Map<String, Object> map = new HashMap<>();
+            map.put("total", list.getTotal());
+            map.put("rows", list.getResult());
+            return map;
+        } else {
             Page page = PageHelperUtil.getPage(pages, rows);
             Page list = (Page) schemeService.findAllInStart(start);
             Map<String, Object> map = new HashMap<>();
@@ -137,6 +143,7 @@ public class Scheme {
             map.put("rows", list.getResult());
             return map;
         }
+
     }
 
     /**
@@ -201,6 +208,8 @@ public class Scheme {
             logger.info("name:----->>>"+name);
             logger.info("id:----->>>"+showId);
             if (name == null || showId ==null) return "error";
+//            String name = "余念";
+//            String showId = "XzaqamVZPDtAR3WP";
             int result = schemeService.createSchemeOneDo(ids,name,showId);
             logger.info("查询得到的结果:" + result);
             return result > 0 ? "success" : "error";
@@ -224,9 +233,29 @@ public class Scheme {
         if (activeScheme.getId() == null || activeScheme.getSchemeStart()==null
                 || activeScheme.getExamineTime()== null) return "error";
         String result = schemeService.setSchemeStart(activeScheme);
-        logger.info(result);
+        logger.info("方案修改::"+result);
+        //方案审核通过后 根据方案id查询方案服务方式 发送通知 加了try
+        String result1 =schemeService.combination(activeScheme.getId());
+        logger.info("组合方式::"+result1);
+        //最新动态中，只要通知了某人，就要显示，不以人员办结状态为依据； 设计新表 记录通知方式和人员
         return result;
     }
+
+
+    /**
+    * @Author: x
+    * @Date: Created in 17:13 2019/3/12
+     *  统计分析模块展示最新动态效果
+    */
+    @PostMapping("/combination")
+    public String combination(Integer id){
+        if (id == null) return "error";
+        logger.info("执行方案id"+id);
+        int result = statisticsService.insertNotice(id);
+        logger.info("通知表数据插入条数"+result);
+        return "success";
+    }
+
 
     //todo 新建方案修改积分接口对接获取 过滤条件变化
 
@@ -243,6 +272,8 @@ public class Scheme {
     public String addActiveScheme2(ActiveScheme activeScheme,HttpServletResponse response,HttpServletRequest request){
         response.addHeader("Access-Control-Allow-Origin", "*");
         String name = CookieUtil.getUid(request, "name"); //去登入用户信息
+//        String name = "余年";
+        if (name == null) return "无用户登入信息";
         String result = schemeService.addActiveScheme1(activeScheme,name);
         return result;
     }

@@ -23,13 +23,13 @@ public class TelephoneUtil {
             "Oufk5WApw0SCZVdnW2Z9d+zLs06qvGmST6UKKYRFAbmKxGVf0aAOcUECAwEAAQ==";
 
     public static String getTokenParam(String pswd,String mishi){
-            HashMap<String, Object> baseMap = new HashMap<>();
-            JSONObject map = new JSONObject();
-            map.put("app", "11"); //应用id
-            long timeStampSec = System.currentTimeMillis()/1000;
-            String timestamp = String.format("%010d", timeStampSec);
-            map.put("tm", timestamp);//时间戳 十位数
-            map.put("dvc", "");//(选填)设备唯一性标识的32位hash值(如md5)
+        HashMap<String, Object> baseMap = new HashMap<>();
+        JSONObject map = new JSONObject();
+        map.put("app", "11"); //应用id
+        long timeStampSec = System.currentTimeMillis()/1000;
+        String timestamp = String.format("%010d", timeStampSec);
+        map.put("tm", timestamp);//时间戳 十位数
+        map.put("dvc", "");//(选填)设备唯一性标识的32位hash值(如md5)
         String param = null;
         try {
             param = RSAUtil.encrypt(RSAUtil.loadPublicKey(publicKeyStr),pswd.getBytes());
@@ -37,15 +37,16 @@ public class TelephoneUtil {
             e.printStackTrace();
         }
         String sha1 = Base64Util.getSha1(param); //键位排序
-            StringBuffer sbf = new StringBuffer();
-            sbf.append(sha1).append(timestamp).append(mishi);
-            String sn = MD5.MD5Encode(sbf.toString());
-//            System.out.println("sn参数加密后:"+sn);
-            map.put("sn",sn); //加密sn
-            map.put("param",baseMap);
-            baseMap.put("pswd", param);
-            String s = HttpDataUtil.JsonSMSPost(map.toString(),getTokenUrl);
-            Map<String, Object> strMap = JsonMethod.readValue(s, Map.class);
+        StringBuffer sbf = new StringBuffer();
+        sbf.append(sha1).append(timestamp).append(mishi);
+        String sn = MD5.MD5Encode(sbf.toString());
+        System.out.println("sn参数加密后:"+sn);
+        map.put("sn",sn); //加密sn
+        map.put("param",baseMap);
+        baseMap.put("pswd", param);
+        String s = HttpDataUtil.JsonSMSPost(map.toString(),getTokenUrl);
+//        System.out.println(s);
+        Map<String, Object> strMap = JsonMethod.readValue(s, Map.class);
             if (strMap!=null){
                 String err = strMap.get("err").toString();
                 if (err.toString().equals("0")) {
@@ -54,7 +55,7 @@ public class TelephoneUtil {
                     return tk;
                 }
             }
-        return "error";
+        return "返回的tk异常"+s;
     }
 
     public static String getCallParam(String pswd,String mishi,String tk,String phones,String content,String title){
@@ -69,7 +70,7 @@ public class TelephoneUtil {
             map.put("tk",tk); //token获取
             map.put("param",data);
             data.put("id","0"); //提醒ID, 0=新增，不然为修改
-            data.put("title",title); //标题
+            data.put("title","主动办语音通知内容"); //标题
             data.put("type","CALL"); //SMS|CALL,暂只支持CALL
             data.put("text",content); //信息文本,CALL类型可自动转语音
 //            data.put("phones","17682355442"); //电话号码(座机或手机)以逗号间隔的列表,不能有空格
@@ -80,11 +81,11 @@ public class TelephoneUtil {
             StringBuffer sbf = new StringBuffer();
             Gson gson = new Gson();
             sbf.append(gson.toJson(map1)).append(timestamp).append(mishi);
-            System.out.println("gson字符串后:"+gson.toJson(map1));
-            System.out.println("对data排序后的字符串:"+sbf);
-            System.out.println("字符串:"+sbf.toString());
+//            System.out.println("gson字符串后:"+gson.toJson(map1));
+//            System.out.println("对data排序后的字符串:"+sbf);
+//            System.out.println("字符串:"+sbf.toString());
             String sn = MD5.EncoderByMd5(sbf.toString());
-            System.out.println("MD5后的sn参数:"+sn);
+//            System.out.println("MD5后的sn参数:"+sn);
             map.put("sn",sn); //加密sn
             String s = HttpDataUtil.JsonSMSPost(map.toString(),planCallUrl);
 //            Map<String, Object> strMap = JsonMethod.readValue(s, Map.class);

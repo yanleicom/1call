@@ -14,4 +14,6 @@ public interface CustomerService {
     String getSchemeLog(Integer id);
 
     String getMsg(String telephone);
+
+    String overScheme(Integer id);
 }

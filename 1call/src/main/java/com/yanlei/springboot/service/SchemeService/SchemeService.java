@@ -2,6 +2,7 @@ package com.yanlei.springboot.service.SchemeService;
 
 import com.yanlei.springboot.model.ActiveMatter;
 import com.yanlei.springboot.model.ActiveScheme;
+import com.yanlei.springboot.model.SchemePerson;
 
 import java.util.List;
 import java.util.Map;
@@ -47,4 +48,9 @@ public interface SchemeService {
 
     int updateScheme2(ActiveScheme activeScheme);
 
+    List<SchemePerson> getSchemePerson2(Integer ids, String pages, String rows);
+
+    List<ActiveScheme> findAllQuartz(String start);
+
+    String combination(Integer id);
 }

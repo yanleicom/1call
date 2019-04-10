@@ -6,8 +6,8 @@
 
 
     <insert id="insertMatter" parameterType="com.yanlei.springboot.controller.Matter" useGeneratedKeys="true" keyProperty="id">
-        insert into active_matter (matter,matter_details,details,dissatisfaction,threshold,street) values
-            (#{matter},#{matterDetails},#{details},#{dissatisfaction},#{threshold},#{street})
+        insert into active_matter (matter,matter_details,details,dissatisfaction,threshold,street,street_manager_id,street_manager_name,business_manager_id,business_manager_name) values
+            (#{matter},#{matterDetails},#{details},#{dissatisfaction},#{threshold},#{street},#{streetManagerId},#{streetManagerName},#{businessManagerId},#{businessManagerName})
     </insert>
 
     <update id="updateMatter" parameterType="com.yanlei.springboot.controller.Matter">
@@ -31,6 +31,18 @@
             <if test="details != null" >
                 details = #{details,jdbcType=LONGVARCHAR},
             </if>
+            <if test="streetManagerId != null" >
+                street_manager_id = #{streetManagerId,jdbcType=VARCHAR},
+            </if>
+            <if test="streetManagerName != null" >
+                street_manager_name = #{streetManagerName,jdbcType=VARCHAR},
+            </if>
+            <if test="businessManagerId != null" >
+                business_manager_id = #{businessManagerId,jdbcType=VARCHAR},
+            </if>
+            <if test="businessManagerName != null" >
+                business_manager_name = #{businessManagerName,jdbcType=VARCHAR},
+            </if>
         </set>
         where id = #{id,jdbcType=INTEGER}
     </update>
@@ -38,6 +50,6 @@
     <select id="showMatterPerson" parameterType="java.lang.Integer" resultType="com.yanlei.springboot.model.SchemePerson">
         select id,name,id_number AS idNumber, waiter_name AS waiterName,
             address,street,community,special_groups AS specialGroups,
-            telephone,username from scheme_person where p_id = #{id}
+            telephone,username,insert_time AS insertTime,source from scheme_person where p_id = #{id}
     </select>
 </mapper>

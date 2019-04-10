@@ -19,13 +19,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.text.NumberFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-import static com.yanlei.springboot.controller.Exchange.mishi;
-import static com.yanlei.springboot.controller.Exchange.msgUrl;
-import static com.yanlei.springboot.controller.Exchange.pswd;
-import static com.yanlei.springboot.controller.Matter.createIdo;
+import static com.yanlei.springboot.controller.Exchange.*;
 
 /**
  * @Author: x
@@ -129,41 +127,236 @@ public class SchemeServiceImpl implements SchemeService {
         Map<String, Object> maps = new HashMap<>();
         maps.put("start",start);
         maps.put("id",id);
-        if (split.length == 2){ //默认二种通知方式 1callAPP通知,短信通知
+        Map<String, Object> map = new HashMap<>();
+        if (split.length  == 1 ){
+            if (split[0].equals(Start.contentStart.TELEPHONESTART.getValue())){
+                Page page = PageHelperUtil.getPage(pages, rows);
+                //服务方式 电话一种
+                Page list = (Page) schemeMapper.getPersonToTelephone(maps);
+                map.put("total", list.getTotal());
+                map.put("rows", list.getResult());
+            }else if (split[0].equals(Start.contentStart.CUSTOMERSTART.getValue())){
+                Page page = PageHelperUtil.getPage(pages, rows);
+                //服务方式 人工
+                Page list = (Page) schemeMapper.getPersonToCustomer(maps);
+                map.put("total", list.getTotal());
+                map.put("rows", list.getResult());
+            }
+        }else if (split.length == 2 && split[0].equals(Start.contentStart.APPSTART.getValue())){ //默认二种通知方式 1callAPP通知,短信通知
             Page page = PageHelperUtil.getPage(pages, rows);
             //在这种通知方式中,以短信未准,只要短信接口不异常就任务已通知到,通知到就算办结
             Page list = (Page) schemeMapper.getPersonToAppAndMsg(maps);
-            Map<String, Object> map = new HashMap<>();
             map.put("total", list.getTotal());
             map.put("rows", list.getResult());
-            return map;
+        }else if (split.length == 2 && split[0].equals(Start.contentStart.TELEPHONESTART.getValue())){
+            //服务方式为 语音加人工
+            Page page = PageHelperUtil.getPage(pages, rows);
+            Page list = (Page) schemeMapper.getPersonToTelephoneAndCustomer(maps);
+            map.put("total", list.getTotal());
+            map.put("rows", list.getResult());
         }else if (split.length == 3){ //三种方式 电话通知 或 者客服通知
             if (split[2].equals(Start.contentStart.TELEPHONESTART.getValue())){
                 Page page = PageHelperUtil.getPage(pages, rows);
                 Page list = (Page) schemeMapper.getAppAndMsgAndTelephone(maps); //电话通知
-                Map<String, Object> map = new HashMap<>();
                 map.put("total", list.getTotal());
                 map.put("rows", list.getResult());
-                return map;
             }else if (split[2].equals(Start.contentStart.CUSTOMERSTART.getValue())){
                 Page page = PageHelperUtil.getPage(pages, rows);
                 Page list = (Page) schemeMapper.getAppAndMsgOrAndCustomer(maps); //客服通知
-                Map<String, Object> map = new HashMap<>();
                 map.put("total", list.getTotal());
                 map.put("rows", list.getResult());
-                return map;
             }
-
         }else if (split.length == 4){ //四种服务方式全选
             Page page = PageHelperUtil.getPage(pages, rows);
             Page list = (Page) schemeMapper.getPersonToStartAll(maps);
-            Map<String, Object> map = new HashMap<>();
             map.put("total", list.getTotal());
             map.put("rows", list.getResult());
-            return map;
+        }
+        return map;
+    }
+
+
+    @Override
+    public List<SchemePerson> getSchemePerson2(Integer ids, String pages, String rows) {
+        ActiveScheme activeScheme = schemeMapper.getSchemeById(ids);
+        if (activeScheme != null){
+//            Page page = PageHelperUtil.getPage(pages, rows);
+            List<SchemePerson> lastPerson = schemeMapper.getLastPerson(ids);
+            return lastPerson;
         }
         return null;
     }
+
+    @Override
+    public List<ActiveScheme> findAllQuartz(String start) {
+        List<ActiveScheme> allQuartz = schemeMapper.findAllQuartz(start);
+        for (ActiveScheme activeScheme : allQuartz) {
+            int count = schemeMapper.getQuartzCount(activeScheme.getId());
+            count+=1;//原方案为执行次数为1
+            if (activeScheme.getExecutionTime().equals("每月一次")){
+                try {
+                    Date nixtTime = WeekOfDateUtil.getNixtTime(activeScheme.getExecutionDate());
+                    activeScheme.setNextTime(nixtTime);
+                    activeScheme.setQuartzCount(count);
+                } catch (ParseException e) {
+                }
+            }else if (activeScheme.getExecutionTime().equals("每周一次")){
+                //  需要解决定时任务下一次执行时间问题 已解决 但是转换时间在十点上有点问题
+                try {
+                    String dateAndtime = WeekOfDateUtil.getDateAndtime(activeScheme.getExecutionDate());
+                    String[] split = dateAndtime.split(" ");
+                    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                    Date parse = format.parse(split[0]+" 18:00:00");
+                    activeScheme.setNextTime(parse);
+                    activeScheme.setQuartzCount(count);
+                } catch (ParseException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return allQuartz;
+    }
+
+    /**
+    * @Author: x
+    * @Date: Created in 17:42 2019/3/12
+     * 细化需求 修改方案状态和第三方服务方式细化
+    */
+    public String setSchemeStart(ActiveScheme activeScheme) {
+        int result = schemeMapper.setSchemeStart(activeScheme);
+        Map<String, Object> map = new HashMap<>();
+        if (result <= 0) return "error";
+        map.put("code",200);
+        map.put("msg",result);
+        return JSON.toJSONString(map);
+
+    }
+
+    /**
+    * @Author: x
+    * @Date: Created in 17:22 2019/3/12
+     * 方案通知 需求修改 分离修改状态和组合通知方式
+    */
+    @Override
+    public String combination(Integer id) {
+        Map<String, Object> map = new HashMap<>();
+        ActiveScheme activeScheme1 = schemeMapper.getSchemeById(id);
+        if (StringUtils.isNotBlank(activeScheme1.getWaiterScheme())) {
+            try {
+                String[] split = activeScheme1.getWaiterScheme().split(",");
+                //获取方案对应的人即电话号码
+                List<SchemePerson> lastPerson = schemeMapper.getLastPerson(activeScheme1.getId());
+                StringBuffer buf = new StringBuffer();
+                List<String> tel = new ArrayList<>();
+                if (lastPerson.size() > 0 && lastPerson != null) {
+                    for (SchemePerson person : lastPerson) {
+                        if (StringUtils.isNotBlank(person.getTelephone()) && person.getMsgStart().equals(Start.contentStart.CODE_NO.getValue())) {
+                            buf.append(person.getTelephone()).append(",");
+                            tel.add(person.getTelephone());
+                        }
+                    }
+                    if (tel.size() < 0) return "error no telephone";
+                    String telephones = buf.substring(0, buf.length() - 1);
+                    logger.info("telephones:::::::" + telephones);
+                    //发送短信 修改人员通知状态
+                    String content = activeScheme1.getContent();
+                    if (content.length() < 10) return "error--->>语音不能为空~~~电话通知内容长度需要大于10";
+                    //修改人员状态
+                    HashMap<String, Object> overStart = new HashMap<>();
+                    overStart.put("id", activeScheme1.getId());
+                    overStart.put("tel", tel); //foreach 遍历取电话
+                    overStart.put("startPerson", Start.contentStart.CODE_YES.getValue());
+                    //修改方案状态;
+                    overStart.put("start", Start.SchemeStart.STARTFOUR.getValue());
+                    overStart.put("endTime", new Date());
+                    //只选择一种方式 主动办电话服务
+                    if (split.length == 1 && split[0].equals(Start.contentStart.TELEPHONESTART.getValue())) {
+                        String tokenParam = TelephoneUtil.getTokenParam(pswd, mishi);
+                        logger.info("tk:::::::" + tokenParam);
+                        String callParam = TelephoneUtil.getCallParam(pswd, mishi, tokenParam, telephones, content, activeScheme1.getSchemeName());
+                        logger.info("callStart:::::::" + callParam);
+                        Map<String, Object> strMap = JsonMethod.readValue(callParam, Map.class);
+                        String err = strMap.get("err").toString();
+                        logger.info("err:::::::" + err);
+                        if (err.equals("0")) {
+                            int nums = schemeMapper.setLastPersonTelStart(overStart);
+                            if (nums == lastPerson.size()) {
+                                schemeMapper.setSchemeStartOver(overStart);
+                            }
+                        }
+                    }else if (split.length==2 && split[0].equals(Start.contentStart.APPSTART.getValue()) &&
+                            split[1].equals(Start.contentStart.MSGSTART.getValue())){
+                        //App加短信
+                        String s = CreateOneDoUtil.SendMessage(msgUrl, telephones,content);
+                        logger.info("msgStart:::::::"+s);
+                        if (s.equals("success")) {
+                            int nums = schemeMapper.setLastPersonMsgStart(overStart);
+                            if (nums == lastPerson.size()) {
+                                schemeMapper.setSchemeStartOver(overStart);
+                            }
+                        }
+                    }else if (split.length==2 && split[0].equals(Start.contentStart.TELEPHONESTART.getValue()) ){
+                        //电话加人工
+                        String tokenParam = TelephoneUtil.getTokenParam(pswd, mishi);
+                        logger.info("tk:::::::" + tokenParam);
+                        String callParam = TelephoneUtil.getCallParam(pswd, mishi, tokenParam, telephones, content, activeScheme1.getSchemeName());
+                        logger.info("callStart:::::::" + callParam);
+                        Map<String, Object> strMap = JsonMethod.readValue(callParam, Map.class);
+                        String err = strMap.get("err").toString();
+                        logger.info("err:::::::" + err);
+                        if (err.equals("0")) {
+                            int nums = schemeMapper.setLastPersonTelStart(overStart);
+                            //涉及人工不用修改方案状态
+                        }
+                    }else if (split.length==3 && split[2].equals(Start.contentStart.TELEPHONESTART.getValue())){
+                        // 电话加短信
+                        String tokenParam = TelephoneUtil.getTokenParam(pswd, mishi);
+                        logger.info("tk:::::::" + tokenParam);
+                        String callParam = TelephoneUtil.getCallParam(pswd, mishi, tokenParam, telephones, content, activeScheme1.getSchemeName());
+                        logger.info("callStart:::::::" + callParam);
+                        Map<String, Object> strMap = JsonMethod.readValue(callParam, Map.class);
+                        String err = strMap.get("err").toString();
+                        logger.info("err:::::::" + err);
+                        String s = CreateOneDoUtil.SendMessage(msgUrl, telephones,content);
+                        logger.info("msgStart:::::::"+s);
+                        if (s.equals("success") && err.equals("0")){
+                            int nums = schemeMapper.setLastPersonMsgAndTelStart(overStart);
+                            if (nums == lastPerson.size()) {
+                                schemeMapper.setSchemeStartOver(overStart);
+                            }
+                        }
+                    }else if (split.length==3 && split[2].equals(Start.contentStart.CUSTOMERSTART.getValue())){
+                        //短信加人工
+                        String s = CreateOneDoUtil.SendMessage(msgUrl, telephones,content);
+                        logger.info("msgStart:::::::"+s);
+                        int num= schemeMapper.setLastPersonMsgStart(overStart);
+                        //涉及人工不用修改方案状态
+                    }else if (split.length == 4 ){
+                        String tokenParam = TelephoneUtil.getTokenParam(pswd, mishi);
+                        logger.info("tk:::::::" + tokenParam);
+                        String callParam = TelephoneUtil.getCallParam(pswd, mishi, tokenParam, telephones, content, activeScheme1.getSchemeName());
+                        logger.info("callStart:::::::" + callParam);
+                        Map<String, Object> strMap = JsonMethod.readValue(callParam, Map.class);
+                        String err = strMap.get("err").toString();
+                        logger.info("err:::::::" + err);
+                        String s = CreateOneDoUtil.SendMessage(msgUrl, telephones,content);
+                        logger.info("msgStart:::::::"+s);
+                        if (s.equals("success") && err.equals("0")) {
+                            int nums = schemeMapper.setLastPersonMsgAndTelStart(overStart);
+                            //涉及人工不用修改方案状态
+                        }
+                    }
+                }
+                map.put("code",200);
+                return JSON.toJSONString(map);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        map.put("code",500);
+        return JSON.toJSONString(map);
+    }
+
 
     @Override
     public void deleteScheme(Integer id) {
@@ -211,15 +404,30 @@ public class SchemeServiceImpl implements SchemeService {
                 List<String> result = Arrays.asList(StringUtils.split(activeScheme.getSpecialGroups(),","));
                 activeScheme.setList(result);
             }
-            Integral integral = schemeMapper.getMatterPerson(activeScheme);
+//            Integral integral = schemeMapper.getMatterPerson(activeScheme);
+            List<SchemePerson> lastPerson = schemeMapper.getLastPerson(activeScheme.getId());
+            ActiveMatter activeMatter = matterMapper.getMatterById(activeScheme.getAmId());
+            //街道负责人姓名
+            String streetManagerName = activeMatter.getStreetManagerName();
+            //街道负责人id
+            String streetManagerId = activeMatter.getStreetManagerId();
+            //业务负责人姓名
+            String businessManagerName = activeMatter.getBusinessManagerName();
+            //业务负责人id
+            String businessManagerId = activeMatter.getBusinessManagerId();
+//            if (StringUtils.isBlank(streetManagerName) || StringUtils.isBlank(streetManagerId) ||
+//                StringUtils.isBlank(businessManagerName) || StringUtils.isBlank(businessManagerName)) return -100;
+            //发送1do的参与人 -- 街道负责人放在前面，业务负责人放在后面  需要去重复
+            businessManagerName = CreateOneDoUtil.removeDuplicates(streetManagerName,businessManagerName);
+            businessManagerId = CreateOneDoUtil.removeDuplicates(streetManagerId,businessManagerId);
+
             if (StringUtils.isNotBlank(activeScheme.getSpecialGroups())){
-            String O_DESCRIBE = "现申请批准主动办方案名称:"+activeScheme.getSchemeName()+","+"当前办理人数为:"
-                    +integral.getPeopleNmber()+","+"主动办类型为:"+activeScheme.getMatterName()+","+
-                    "采用:"+activeScheme.getWaiterScheme()+"的方式,"+"本次扣减积分:"+activeScheme.getIntegral()
-                    +","+"面向人群:"+activeScheme.getSpecialGroups()+";";
+                String O_DESCRIBE = "现申请服务事项主动办。 事项名称："+activeScheme.getMatterName()+"。"+"可办理人数："
+                        +lastPerson.size()+"人。"+"服务方案："+activeScheme.getSchemeName()+"。"+
+                        "服务方式："+activeScheme.getWaiterScheme()+"。";
                 try {
                     String schememOneDo = CreateOneDoUtil.createSchememOneDo(O_DESCRIBE, activeScheme.getWorkName(),
-                            activeScheme.getAgreeName(),activeScheme.getId(),integral.getPeopleNmber(),name,showId);
+                            activeScheme.getAgreeName(),activeScheme.getId(),lastPerson.size(),streetManagerName,streetManagerId,activeScheme.getSchemeName(),businessManagerName,businessManagerId);
                     String s = HttpDataUtil.JsonSMSPost(schememOneDo,createIdo);
                     logger.info("1do审核接口result:"+s);
                     JSONObject jsonObject = JSONObject.parseObject(s);
@@ -236,13 +444,12 @@ public class SchemeServiceImpl implements SchemeService {
                     e.printStackTrace();
                 }
             }else {
-                String O_DESCRIBE = "现申请批准主动办方案名称:"+activeScheme.getSchemeName()+","+"当前办理人数为:"
-                        +integral.getPeopleNmber()+","+"主动办类型为:"+activeScheme.getMatterName()+","+
-                        "采用:"+activeScheme.getWaiterScheme()+"的方式,"+"本次扣减积分:"+activeScheme.getIntegral()
-                        +","+"面向人群:"+activeScheme.getExecutionStart()+";";
+                String O_DESCRIBE = "现申请服务事项主动办。 事项名称："+activeScheme.getMatterName()+"。"+"可办理人数："
+                        +lastPerson.size()+"人。"+"服务方案："+activeScheme.getSchemeName()+"。"+
+                        "服务方式："+activeScheme.getWaiterScheme()+"。";
                 try {
                     String schememOneDo = CreateOneDoUtil.createSchememOneDo(O_DESCRIBE, activeScheme.getWorkName(),
-                            activeScheme.getAgreeName(),activeScheme.getId(),integral.getPeopleNmber(),name,showId);
+                            activeScheme.getAgreeName(),activeScheme.getId(),lastPerson.size(),streetManagerName,streetManagerId,activeScheme.getSchemeName(),businessManagerName,businessManagerId);
                     String s = HttpDataUtil.JsonSMSPost(schememOneDo,createIdo);
                     logger.info("1do审核接口result:"+s);
                     JSONObject jsonObject = JSONObject.parseObject(s);
@@ -263,86 +470,6 @@ public class SchemeServiceImpl implements SchemeService {
         return -1;
     }
 
-    @Override
-    @Transactional
-    public String setSchemeStart(ActiveScheme activeScheme) {
-        int result = schemeMapper.setSchemeStart(activeScheme);
-        Map<String,Object> map = new HashMap<>();
-        if (result>0){
-            ActiveScheme activeScheme1 = schemeMapper.getSchemeById(activeScheme.getId());
-            if (StringUtils.isNotBlank(activeScheme1.getWaiterScheme())){
-                String[] split = activeScheme1.getWaiterScheme().split(",");
-                //获取方案对应的人即电话号码
-                List<SchemePerson> lastPerson = schemeMapper.getLastPerson(activeScheme.getId());
-                StringBuffer buf = new StringBuffer();
-                List<String> tel = new ArrayList<>();
-                if (lastPerson.size()>0 && lastPerson!=null){
-                    for (SchemePerson person : lastPerson) {
-                        if (StringUtils.isNotBlank(person.getTelephone()) && person.getMsgStart().equals(Start.contentStart.CODE_NO.getValue())){
-                            buf.append(person.getTelephone()).append(",");
-                            tel.add(person.getTelephone());
-                        }
-                    }
-                    if (tel.size()<0) return "error no telephone";
-                    String telephones = buf.substring(0, buf.length() - 1);
-                    logger.info("telephones:::::::"+telephones);
-//                    System.out.println(telephones);
-                    //发送短信 修改人员通知状态
-                    String content = activeScheme1.getContent();
-                    if (content.length()<10) return "error--->>语音不能为空~~~电话通知内容长度需要大于10";
-                    String s = CreateOneDoUtil.SendMessage(msgUrl, telephones,content);
-                    logger.info("msgStart:::::::"+s);
-//                    String s = "success";
-                    if (s.equals("success")){
-                        HashMap<String, Object> telMap = new HashMap<>();
-                        telMap.put("id",activeScheme.getId());
-                        telMap.put("tel",tel); //foreach 遍历取电话
-                        telMap.put("start",Start.contentStart.CODE_YES.getValue());//修改人员状态
-                        int num= schemeMapper.setLastPersonMsgStart(telMap);
-                        if (split.length==2 && num==lastPerson.size()){
-                            HashMap<String, Object> overStart = new HashMap<>();
-                            overStart.put("id",activeScheme.getId());
-                            overStart.put("start",Start.SchemeStart.STARTFOUR.getValue());//修改方案状态;
-                            overStart.put("endTime",new Date());
-                            schemeMapper.setSchemeStartOver(overStart);
-                        }else if (split.length==3 && split[2].equals(Start.contentStart.TELEPHONESTART.getValue())
-                                || split.length==4){ //三种方式包含电话通知,或者四种方式都选的
-                            //打电话通知 修改人员通知状态
-                            String tokenParam = TelephoneUtil.getTokenParam(pswd, mishi);
-                            logger.info("tk:::::::"+tokenParam);
-                            String callParam = TelephoneUtil.getCallParam(pswd, mishi, tokenParam,telephones,content,activeScheme1.getSchemeName());
-                            logger.info("callStart:::::::"+callParam);
-                            Map<String, Object> strMap = JsonMethod.readValue(callParam, Map.class);
-                            String err = strMap.get("err").toString();
-                            logger.info("err:::::::"+err);
-                            if (err.equals("0")) {
-                                HashMap<String, Object> callMap = new HashMap<>();
-                                callMap.put("id",activeScheme.getId());
-                                callMap.put("tel",tel); //foreach 遍历取电话
-                                callMap.put("start",Start.contentStart.CODE_YES.getValue());//修改人员状态
-                                int nums = schemeMapper.setLastPersonMsgAndTelStart(telMap);
-                                if (split.length==3 && nums==lastPerson.size()){
-                                    HashMap<String, Object> overStart = new HashMap<>();
-                                    overStart.put("id",activeScheme.getId());
-                                    overStart.put("start",Start.SchemeStart.STARTFOUR.getValue());//修改方案状态;
-                                    overStart.put("endTime",new Date());
-                                    schemeMapper.setSchemeStartOver(overStart);
-                                }else if (split.length==4){
-                                    //四项全选,不用修改方案状态,客服主动办是人工点击办理
-                                    // 所以在客服办理修改状态是判断人员通知状态修改方案状态
-                                }
-                            }
-                        }
-                        map.put("code",200);
-                        map.put("msg",result);
-                        return JSON.toJSONString(map);
-                    }
-                }
-            }
-        }
-        map.put("code",500);
-        return JSON.toJSONString(map);
-    }
 
     /**
     * @Author: x
@@ -420,75 +547,9 @@ public class SchemeServiceImpl implements SchemeService {
 
 
 
-    private void sendMsgAndTelephone(ActiveScheme activeScheme, ActiveScheme scheme, List<String> tel, String telephones) {
-        String[] split = scheme.getWaiterScheme().split(",");
-        if (split.length > 0){
-            String content = scheme.getContent();
-            String s = CreateOneDoUtil.SendMessage(msgUrl, telephones,scheme.getContent());
-//            String s = "success";
-            if (s.equals("success")) {
-                HashMap<String, Object> telMap = new HashMap<>();
-                telMap.put("id", scheme.getId());
-                telMap.put("tel", tel); //foreach 遍历取电话
-                telMap.put("start", Start.contentStart.CODE_YES.getValue());//修改人员状态
-                int num = schemeMapper.setLastPersonMsgStart(telMap);
-                List<SchemePerson> lastPerson = schemeMapper.getLastPerson(scheme.getId());
-                int number = 0;
-                if (split.length == 2){
-                    for (SchemePerson person : lastPerson) {
-                        if (StringUtils.isNotBlank(person.getTelephone()) &&
-                                person.getMsgStart().equals(Start.contentStart.CODE_YES.getValue())){
-                            number++;
-                        }
-                    }
-                }else if (split.length == 3 && split[2].equals(Start.contentStart.TELEPHONESTART.getValue()) || split.length ==4){
-                    //语音通知
-                    String tokenParam = TelephoneUtil.getTokenParam(pswd, mishi);
-                    String callParam = TelephoneUtil.getCallParam(pswd, mishi, tokenParam,telephones,scheme.getContent(),scheme.getSchemeName());
-                    //logger.info("callStart:::::::"+callParam);
-                    Map<String, Object> strMap = JsonMethod.readValue(callParam, Map.class);
-                    String err = strMap.get("err").toString();
-                    if (err.equals("0")) {
-                        HashMap<String, Object> callMap = new HashMap<>();
-                        callMap.put("id", scheme.getId());
-                        callMap.put("tel", tel); //foreach 遍历取电话
-                        callMap.put("start", Start.contentStart.CODE_YES.getValue());//修改人员状态
-                        int nums = schemeMapper.setLastPersonMsgAndTelStart(telMap);
-                    }
-                    List<SchemePerson> lastPerson1 = schemeMapper.getLastPerson(scheme.getId());
-                    if (split.length == 3 && split[2].equals(Start.contentStart.TELEPHONESTART.getValue())){
-                        for (SchemePerson person : lastPerson1) { //短信和语音通知都通知到
-                            if (StringUtils.isNotBlank(person.getTelephone()) &&
-                                    person.getMsgStart().equals(Start.contentStart.CODE_YES.getValue()) &&
-                                    person.getTelephoneStart().equals(Start.contentStart.CODE_YES.getValue())){
-                                number++;
-                            }
-                        }
-                    }else if (split.length == 4){
-                        for (SchemePerson person : lastPerson1) { //短信,语音,客服 都通知到
-                            if (StringUtils.isNotBlank(person.getTelephone()) &&
-                                    person.getMsgStart().equals(Start.contentStart.CODE_YES.getValue()) &&
-                                    person.getTelephoneStart().equals(Start.contentStart.CODE_YES.getValue()) &&
-                                    person.getCustomerStart().equals(Start.contentStart.CODE_YES.getValue())){
-                                number++;
-                            }
-                        }
-                    }
-                }
-                if (number == lastPerson.size()){ //所有人员通知到,修改方案状态
-                    HashMap<String, Object> overStart = new HashMap<>();
-                    overStart.put("id",scheme.getId());
-                    overStart.put("start",Start.SchemeStart.STARTFOUR.getValue());//修改方案状态;
-                    overStart.put("endTime",new Date());
-                    schemeMapper.setSchemeStartOver(overStart);
-                }
-            }
-        }
-    }
-
-
     @Override
     public String getMatterPerson2(ActiveScheme activeScheme) {
+//        if (StringUtils.isBlank(activeScheme.getSpecialGroups())) return "特殊人群字段为空";
         if (activeScheme.getAmId() == null) return "请传入修改id!!!!!";
         ActiveMatter matterById = matterMapper.getMatterById(activeScheme.getAmId());
         if (matterById.getId()==null) return "无对应事项,请先新建事项";
@@ -506,10 +567,12 @@ public class SchemeServiceImpl implements SchemeService {
         //todo 过滤特殊人群后符合人群的身份证数据 2.0修改 已修改
         List<String> idNumber = schemeMapper.getSchemeSpecialGroupsPerson(activeScheme);
         lists.addAll(idNumber);
+        if (lists.size()<=0) return "暂无对应人群";
         logger.info(JSON.toJSONString(idNumber));
         if (activeScheme.getIntegralQj()==null) activeScheme.setIntegralQj(0);
-        Map integralFoMaxAndIdNumber = CreateOneDoUtil.getIntegralFoMaxAndIdNumber(lists, activeScheme.getIntegralQj());
 
+        Map integralFoMaxAndIdNumber = CreateOneDoUtil.getIntegralFoMaxAndIdNumber(lists, activeScheme.getIntegralQj());
+        if (integralFoMaxAndIdNumber == null) return "积分接口异常";
         Object maxIntegral = integralFoMaxAndIdNumber.get("maxIntegral");
         Integer peopleNmber = (Integer)integralFoMaxAndIdNumber.get("peopleNmber");
 //        List idNumbers =(List) integralFoMaxAndIdNumber.get("idNumber");
@@ -531,7 +594,7 @@ public class SchemeServiceImpl implements SchemeService {
         activeScheme.setMatterName(activeMatter.getMatter()); //事项名称 怕事项名称在保存是修改不完全匹配
         activeScheme.setCreateTime(new Date());//创建时间
         if (StringUtils.isEmpty(activeScheme.getWorkName()))activeScheme.setWorkName(name);
-        if (StringUtils.isEmpty(activeScheme.getAgreeName()))activeScheme.setAgreeName("刘佳明");
+        if (StringUtils.isEmpty(activeScheme.getAgreeName()))activeScheme.setAgreeName(activeMatter.getStreetManagerName());
         activeScheme.setSchemeStart(1); //方案状态(1:待报批 , 2:已报批 , 3:已批准 , 4:已办结)',
         if (activeScheme.getIntegral() == null) activeScheme.setIntegral(0); //积分扣减 不传默认0分
         schemeMapper.addActiveScheme(activeScheme);
@@ -546,11 +609,13 @@ public class SchemeServiceImpl implements SchemeService {
         //todo 过滤特殊人群后符合人群的身份证数据 2.0修改 已修改
         List<String> idNumber = schemeMapper.getSchemeSpecialGroupsPerson(activeScheme1);
         lists.addAll(idNumber);
+        if (lists.size()<=0) return "新建方案成功,暂无对应人群";
         logger.info(JSON.toJSONString(idNumber));
         if (activeScheme1.getIntegralQj()==null) activeScheme1.setIntegralQj(0);
         Map integralFoMaxAndIdNumber = CreateOneDoUtil.getIntegralFoMaxAndIdNumber(lists, activeScheme1.getIntegralQj());
+        if (integralFoMaxAndIdNumber.get("totalCount").toString().equals("0")) return "新建方案成功,暂无对应人群";
         List idNumbers =(List) integralFoMaxAndIdNumber.get("idNumber");
-        if (idNumbers.size()==0) return "新建方案成功,暂无对应人群";
+//        if (idNumbers.size()==0 || idNumbers == null) return "新建方案成功,暂无对应人群";
         activeScheme1.setList(idNumbers);
         List<SchemePerson> lastPerson = schemeMapper.getSchemePersonByIdNumber(activeScheme1);
         logger.info(JSON.toJSONString(lastPerson));
@@ -567,41 +632,55 @@ public class SchemeServiceImpl implements SchemeService {
 
     @Override
     public int updateScheme2(ActiveScheme activeScheme) {
-        if (StringUtils.isNotBlank(activeScheme.getSpecialGroups()) || activeScheme.getIntegralQj() != null) {
+        if (StringUtils.isNotBlank(activeScheme.getSpecialGroups()) || activeScheme.getIntegralQj() != null
+                || (activeScheme.getMaxTime()!=null && activeScheme.getMinTime()!=null)) {
             //方案已对应事项,不允许修改事项名称 ~!
             if (StringUtils.isNotBlank(activeScheme.getMatterName())) activeScheme.setMatterName(null);
             schemeMapper.updateScheme(activeScheme);
             Integer id = activeScheme.getId();
             ActiveScheme activeScheme1 = schemeMapper.getSchemeById(id);
             List<String> lists = new ArrayList<>();
+            Map<String,Integer> map = new HashMap<>();
+            map.put("id",id);
             if (StringUtils.isNotBlank(activeScheme1.getSpecialGroups())) {
                 List<String> result = Arrays.asList(StringUtils.split(activeScheme1.getSpecialGroups(), ","));
                 activeScheme1.setList(result); //设置条件
             }
             List<String> idNumber = schemeMapper.getSchemeSpecialGroupsPerson(activeScheme1);
             lists.addAll(idNumber);
-            logger.info(JSON.toJSONString(idNumber));
-            schemeMapper.deleteLastPerson(activeScheme1.getId());
-            if (activeScheme1.getIntegralQj()==null) activeScheme1.setIntegralQj(0);
-            Map integralFoMaxAndIdNumber = CreateOneDoUtil.getIntegralFoMaxAndIdNumber(lists, activeScheme1.getIntegralQj());
-            List idNumbers =(List) integralFoMaxAndIdNumber.get("idNumber");
-            if (idNumbers.size()==0) return -1;
-            activeScheme1.setList(idNumbers);
-            List<SchemePerson> lastPerson = schemeMapper.getSchemePersonByIdNumber(activeScheme1);
-            logger.info(JSON.toJSONString(lastPerson));
-            if (lastPerson.size()>0 && lastPerson!=null){
-                for (SchemePerson person : lastPerson) {
-                    person.setsId(id); //设置方案id关联最后人信息
+            if (lists.size()<=0) {
+                schemeMapper.deleteLastPerson(activeScheme1.getId());
+                map.put("peopleNumber",0);
+                schemeMapper.setSchemePersonNumber(map);
+                return 1;
+            }else {
+                logger.info("符合人员身份证号"+JSON.toJSONString(idNumber));
+                schemeMapper.deleteLastPerson(activeScheme1.getId());
+                if (activeScheme1.getIntegralQj()==null) activeScheme1.setIntegralQj(0);
+                Map integralFoMaxAndIdNumber = CreateOneDoUtil.getIntegralFoMaxAndIdNumber(lists, activeScheme1.getIntegralQj());
+                List idNumbers =(List) integralFoMaxAndIdNumber.get("idNumber");
+                if (idNumbers.size()==0) return -1;
+                activeScheme1.setList(idNumbers);
+                List<SchemePerson> lastPerson = schemeMapper.getSchemePersonByIdNumber(activeScheme1);
+                logger.info("最终符合人员信息"+JSON.toJSONString(lastPerson));
+                if (lastPerson.size()>0 && lastPerson!=null){
+                    for (SchemePerson person : lastPerson) {
+                        person.setsId(id); //设置方案id关联最后人信息
 //                    person.setStart("1"); //设置人员办理状态(1:未通知,2:已通知(办理中),3:已办结)
+                    }
+                    int result =  schemeMapper.insertLastPerson(lastPerson);
+                    map.put("peopleNumber",lastPerson.size());
+                    schemeMapper.setSchemePersonNumber(map);
+                    if (result == lastPerson.size())return 1;
                 }
-                int result =  schemeMapper.insertLastPerson(lastPerson);
-                if (result == lastPerson.size())return 1;
+                return -1;
             }
-            return -1;
         } else {
             return schemeMapper.updateScheme(activeScheme);
         }
     }
+
+
 
     /**
     * @Author: x
@@ -652,7 +731,7 @@ public class SchemeServiceImpl implements SchemeService {
                     scheme.setEndTime(null);
                     scheme.setSchemeStart(3); //已批准状态
                     scheme.setCreateTime(new Date()); //方案创建时间修改为当前时间
-
+                    scheme.setAsId(scheme.getId()); //设置定时方案执行关联方案主键id
                     if (tel.size()<0) continue;
                     String content = scheme.getContent();
                     if (StringUtils.isBlank(content) || content.length()<3) continue;
@@ -674,77 +753,106 @@ public class SchemeServiceImpl implements SchemeService {
 
     private void sendMsgAndTelephone2(List<SchemePerson> lastPersons, ActiveScheme scheme, List<String> tel, String telephones) {
         String[] split = scheme.getWaiterScheme().split(",");
-        if (split.length > 0) {
-            String content = scheme.getContent();
-            String s = CreateOneDoUtil.SendMessage(msgUrl, telephones, scheme.getContent());
-//            String s = "success";
+        String content = scheme.getContent();
+        if (content.length() <10 ) return; //语音内容需要大于10
+        int number = 0;
+        List<String> idNumber = new ArrayList<>();
+        Integer id = scheme.getId();
+        for (SchemePerson person : lastPersons) {
+            idNumber.add(person.getIdNumber());
+        }
+        HashMap<String, Object> telMap = new HashMap<>();
+        telMap.put("id", id); //foreach 遍历最后存入last_person对应id
+        telMap.put("tel", idNumber); //foreach 遍历取电话换成身份证
+        telMap.put("start", Start.contentStart.CODE_YES.getValue());//修改人员状态
+        //修改方案状态;
+        HashMap<String, Object> overStart = new HashMap<>();
+        overStart.put("id",scheme.getId());
+        overStart.put("start",Start.SchemeStart.STARTFOUR.getValue());
+        overStart.put("endTime",new Date());
+        if (split.length == 1 && split[0].equals(Start.contentStart.TELEPHONESTART.getValue())) {
+            // 电话
+            String tokenParam = TelephoneUtil.getTokenParam(pswd, mishi);
+            String callParam = TelephoneUtil.getCallParam(pswd, mishi, tokenParam,telephones,content,scheme.getSchemeName());
+            Map<String, Object> strMap = JsonMethod.readValue(callParam, Map.class);
+            String err = strMap.get("err").toString();
+            if (err.equals("0")) {
+                int nums = schemeMapper.setLastPersonTelStart2(telMap);
+            }
+            List<SchemePerson> lastPerson = schemeMapper.getLastPerson2(telMap);
+            for (SchemePerson person : lastPerson) {
+                if (StringUtils.isNotBlank(person.getTelephone()) &&
+                        person.getTelephoneStart().equals(Start.contentStart.CODE_YES.getValue())){
+                    number++;
+                }
+            }
+            if (number == lastPerson.size()){ //所有人员通知到,修改方案状态
+                schemeMapper.setSchemeStartOver(overStart);
+            }
+        }else if (split.length == 2 && split[0].equals(Start.contentStart.TELEPHONESTART.getValue())){
+            //电话加人工
+            String tokenParam = TelephoneUtil.getTokenParam(pswd, mishi);
+            String callParam = TelephoneUtil.getCallParam(pswd, mishi, tokenParam,telephones,content,scheme.getSchemeName());
+            Map<String, Object> strMap = JsonMethod.readValue(callParam, Map.class);
+            String err = strMap.get("err").toString();
+            if (err.equals("0")) {
+                int nums = schemeMapper.setLastPersonTelStart2(telMap);
+            }
+        }else if (split.length == 2 && split[0].equals(Start.contentStart.APPSTART.getValue())){
+            //默认选择 App加短信
+            String s = CreateOneDoUtil.SendMessage(msgUrl, telephones,content);
             if (s.equals("success")) {
-                List<String> idNumber = new ArrayList<>();
-//                logger.info(scheme.getId()+"---");
-                Integer id = scheme.getId();
-                for (SchemePerson person : lastPersons) {
-                    idNumber.add(person.getIdNumber());
-//                    id=person.getsId();
-                }
-                HashMap<String, Object> telMap = new HashMap<>();
-                telMap.put("id", id); //foreach 遍历最后存入last_person对应id
-                telMap.put("tel", idNumber); //foreach 遍历取电话换成身份证
-                telMap.put("start", Start.contentStart.CODE_YES.getValue());//修改人员状态
                 int num = schemeMapper.setLastPersonMsgStart2(telMap);
-                List<SchemePerson> lastPerson = schemeMapper.getLastPerson2(telMap);
-                int number = 0;
-                if (split.length == 2){
-                    for (SchemePerson person : lastPerson) {
-                        if (StringUtils.isNotBlank(person.getTelephone()) &&
-                                person.getMsgStart().equals(Start.contentStart.CODE_YES.getValue())){
-                            number++;
-                        }
-                    }
-                }else if (split.length == 3 && split[2].equals(Start.contentStart.TELEPHONESTART.getValue()) || split.length ==4){
-                    //语音通知
-                    String tokenParam = TelephoneUtil.getTokenParam(pswd, mishi);
-                    String callParam = TelephoneUtil.getCallParam(pswd, mishi, tokenParam,telephones,scheme.getContent(),scheme.getSchemeName());
-                    //logger.info("callStart:::::::"+callParam);
-                    Map<String, Object> strMap = JsonMethod.readValue(callParam, Map.class);
-                    String err = strMap.get("err").toString();
-                    if (err.equals("0")) {
-                        HashMap<String, Object> callMap = new HashMap<>();
-                        callMap.put("id", id);
-                        callMap.put("tel", idNumber); //foreach 遍历取电话
-                        callMap.put("start", Start.contentStart.CODE_YES.getValue());//修改人员状态
-                        int nums = schemeMapper.setLastPersonMsgAndTelStart2(callMap);
-                    }
-                    List<SchemePerson> lastPerson1 = schemeMapper.getLastPerson2(telMap);
-                    if (split.length == 3 && split[2].equals(Start.contentStart.TELEPHONESTART.getValue())){
-                        for (SchemePerson person : lastPerson1) { //短信和语音通知都通知到
-                            if (StringUtils.isNotBlank(person.getTelephone()) &&
-                                    person.getMsgStart().equals(Start.contentStart.CODE_YES.getValue()) &&
-                                    person.getTelephoneStart().equals(Start.contentStart.CODE_YES.getValue())){
-                                number++;
-                            }
-                        }
-                    }else if (split.length == 4){
-                        for (SchemePerson person : lastPerson1) { //短信,语音,客服 都通知到
-                            if (StringUtils.isNotBlank(person.getTelephone()) &&
-                                    person.getMsgStart().equals(Start.contentStart.CODE_YES.getValue()) &&
-                                    person.getTelephoneStart().equals(Start.contentStart.CODE_YES.getValue()) &&
-                                    person.getCustomerStart().equals(Start.contentStart.CODE_YES.getValue())){
-                                number++;
-                            }
-                        }
-                    }
+            }
+            List<SchemePerson> lastPerson = schemeMapper.getLastPerson2(telMap);
+            for (SchemePerson person : lastPerson) {
+                if (StringUtils.isNotBlank(person.getTelephone()) &&
+                        person.getMsgStart().equals(Start.contentStart.CODE_YES.getValue())){
+                    number++;
                 }
-                if (number == lastPerson.size()){ //所有人员通知到,修改方案状态
-                    HashMap<String, Object> overStart = new HashMap<>();
-                    overStart.put("id",scheme.getId());
-                    overStart.put("start",Start.SchemeStart.STARTFOUR.getValue());//修改方案状态;
-                    overStart.put("endTime",new Date());
-                    schemeMapper.setSchemeStartOver(overStart);
+            }
+            if (number == lastPerson.size()){ //所有人员通知到,修改方案状态
+                schemeMapper.setSchemeStartOver(overStart);
+            }
+        }else if (split.length == 3 && split[2].equals(Start.contentStart.TELEPHONESTART.getValue())){
+            //短信加电话
+            String tokenParam = TelephoneUtil.getTokenParam(pswd, mishi);//电话
+            String callParam = TelephoneUtil.getCallParam(pswd, mishi, tokenParam,telephones,content,scheme.getSchemeName());
+            Map<String, Object> strMap = JsonMethod.readValue(callParam, Map.class);
+            String err = strMap.get("err").toString();
+            String s = CreateOneDoUtil.SendMessage(msgUrl, telephones,content);//短信
+            if (s.equals("success") &&  err.equals("0")){
+                int nums = schemeMapper.setLastPersonMsgAndTelStart2(telMap);
+            }
+            List<SchemePerson> lastPerson = schemeMapper.getLastPerson2(telMap);
+            for (SchemePerson person : lastPerson) {
+                if (StringUtils.isNotBlank(person.getTelephone()) &&
+                        person.getMsgStart().equals(Start.contentStart.CODE_YES.getValue()) &&
+                        person.getTelephoneStart().equals(Start.contentStart.CODE_YES.getValue())){
+                    number++;
                 }
+            }
+            if (number == lastPerson.size()){ //所有人员通知到,修改方案状态
+                schemeMapper.setSchemeStartOver(overStart);
+            }
+        }else if (split.length == 3 && split[2].equals(Start.contentStart.CUSTOMERSTART.getValue())){
+            //短信加人工
+            String s = CreateOneDoUtil.SendMessage(msgUrl, telephones,content);//短信
+            if (s.equals("success")) {
+                int num = schemeMapper.setLastPersonMsgStart2(telMap);
+            }
+        }else if (split.length == 4) {
+            //四种服务方式都选 已短信和电话为准
+            String tokenParam = TelephoneUtil.getTokenParam(pswd, mishi);//电话
+            String callParam = TelephoneUtil.getCallParam(pswd, mishi, tokenParam,telephones,content,scheme.getSchemeName());
+            Map<String, Object> strMap = JsonMethod.readValue(callParam, Map.class);
+            String err = strMap.get("err").toString();
+            String s = CreateOneDoUtil.SendMessage(msgUrl, telephones,content);//短信
+            if (s.equals("success") &&  err.equals("0")){
+                int nums = schemeMapper.setLastPersonMsgAndTelStart2(telMap);
             }
         }
     }
-
 
 
     private int myJobAll2(ActiveScheme activeScheme, String dateNowStr) {
@@ -760,6 +868,7 @@ public class SchemeServiceImpl implements SchemeService {
                 List<String> idNumber = schemeMapper.findSchemePerson2(scheme); //查询符合人员身份证
                 if (idNumber.size() < 0) return -1;
                 lists.addAll(idNumber);
+                if (lists.size()<=0) return -2;
                 logger.info(JSON.toJSONString(idNumber));
                 if (scheme.getIntegralQj()==null) scheme.setIntegralQj(0);
                 Map integralFoMaxAndIdNumber = CreateOneDoUtil.getIntegralFoMaxAndIdNumber(lists, scheme.getIntegralQj());
@@ -774,6 +883,7 @@ public class SchemeServiceImpl implements SchemeService {
                 scheme.setEndTime(null);
                 scheme.setSchemeStart(3); //已批准状态
                 scheme.setCreateTime(new Date()); //方案创建时间修改为当前时间
+                scheme.setAsId(scheme.getId()); //设置定时方案执行关联方案主键id
                 schemeMapper.addActiveScheme(scheme); //生成新方案
                 StringBuffer buf = new StringBuffer();
                 List<String> tel = new ArrayList<>();

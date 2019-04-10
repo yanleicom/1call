@@ -17,6 +17,10 @@ public class ActiveMatter {
     private String street; //街道名 暂时默认选武林街道
     private Integer num;
     private String matterStart; //事项发生1do工单状态 1未发送 2已发送
+    private String streetManagerId; //街道负责人id
+    private String streetManagerName; //街道负责人姓名
+    private String businessManagerId; //业务负责人id
+    private String businessManagerName; //业务负责人姓名
 
     public String getMatterStart() {
         return matterStart;
@@ -90,10 +94,42 @@ public class ActiveMatter {
         this.threshold = threshold;
     }
 
+    public String getStreetManagerId() {
+        return streetManagerId;
+    }
+
+    public void setStreetManagerId(String streetManagerId) {
+        this.streetManagerId = streetManagerId;
+    }
+
+    public String getStreetManagerName() {
+        return streetManagerName;
+    }
+
+    public void setStreetManagerName(String streetManagerName) {
+        this.streetManagerName = streetManagerName;
+    }
+
+    public String getBusinessManagerId() {
+        return businessManagerId;
+    }
+
+    public void setBusinessManagerId(String businessManagerId) {
+        this.businessManagerId = businessManagerId;
+    }
+
+    public String getBusinessManagerName() {
+        return businessManagerName;
+    }
+
+    public void setBusinessManagerName(String businessManagerName) {
+        this.businessManagerName = businessManagerName;
+    }
+
     public ActiveMatter() {
     }
 
-    public ActiveMatter(Integer id, String matter, String matterDetails, String details, String dissatisfaction, String threshold, String street) {
+    public ActiveMatter(Integer id, String matter, String matterDetails, String details, String dissatisfaction, String threshold, String street, Integer num, String matterStart, String streetManagerId, String streetManagerName, String businessManagerId, String businessManagerName) {
         this.id = id;
         this.matter = matter;
         this.matterDetails = matterDetails;
@@ -101,5 +137,11 @@ public class ActiveMatter {
         this.dissatisfaction = dissatisfaction;
         this.threshold = threshold;
         this.street = street;
+        this.num = num;
+        this.matterStart = matterStart;
+        this.streetManagerId = streetManagerId;
+        this.streetManagerName = streetManagerName;
+        this.businessManagerId = businessManagerId;
+        this.businessManagerName = businessManagerName;
     }
 }

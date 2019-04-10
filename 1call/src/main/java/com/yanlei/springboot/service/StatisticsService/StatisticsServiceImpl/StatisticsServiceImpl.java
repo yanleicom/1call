@@ -5,6 +5,7 @@ import com.yanlei.springboot.mapper.myData.SchemeMapper;
 import com.yanlei.springboot.mapper.myData.StatisticsMapper;
 import com.yanlei.springboot.model.ActiveMatter;
 import com.yanlei.springboot.model.ActiveScheme;
+import com.yanlei.springboot.model.Integral;
 import com.yanlei.springboot.model.SchemePerson;
 import com.yanlei.springboot.service.StatisticsService.StatisticsService;
 import com.yanlei.springboot.util.Start;
@@ -19,6 +20,8 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 import org.slf4j.Logger;
+
+import static com.yanlei.springboot.util.StatisticsTetMonth.getMonth;
 
 /**
  * @Author: x
@@ -107,44 +110,62 @@ public class StatisticsServiceImpl implements StatisticsService {
         return JSON.toJSONString(map);
     }
 
+//    @Override
+//    public String getTrends() {
+//        ActiveScheme activeScheme = statisticsMapper.getSchemeOver(Start.SchemeStart.STARTFOUR.getValue());
+//        if (activeScheme==null) return "暂无办结方案";
+//        String[] split = activeScheme.getWaiterScheme().split(",");
+//        List<String> list = new ArrayList<>();
+//        List<String> time = new ArrayList<>();
+//        Map<String,Object> map =new HashMap<>();
+//        SimpleDateFormat sdf= new SimpleDateFormat("EEE MMM dd HH:mm:ss z yyyy", Locale.ENGLISH);
+//        if (split.length<2)return "error";
+//            List<SchemePerson> lastPerson = schemeMapper.getLastPerson(activeScheme.getId());
+//            if (lastPerson.size()<=0) return "暂无对应人群";
+//            for (int i = 0; i < lastPerson.size(); i++) {
+//                String name = lastPerson.get(i).getName();
+//                for (int j = 0; j < split.length; j++) {
+//                    StringBuffer sbf = new StringBuffer();
+//                    StringBuffer sbf1 = new StringBuffer();
+//                    sbf.append("已").append(split[j]).append(name).append("办理").
+//                            append(activeScheme.getMatterName());
+//                    try {
+//                        sbf1.append(sdf.parse(activeScheme.getEndTime()+"").getTime());
+//                    } catch (ParseException e) {
+//                        e.printStackTrace();
+//                    }
+//                    logger.info("时间格式"+sbf1);
+//                    list.add(sbf.toString());
+//                    time.add(sbf1.toString());
+//                    if (list.size()==6){
+//                        map.put("name",list);
+//                        map.put("time",time);
+//                        return JSON.toJSONString(map);
+//                    }
+//            }
+//        }
+//        map.put("name",list);
+//        map.put("time",time);
+//        return JSON.toJSONString(map);
+//    }
+
     @Override
     public String getTrends() {
-        ActiveScheme activeScheme = statisticsMapper.getSchemeOver(Start.SchemeStart.STARTFOUR.getValue());
-        if (activeScheme==null) return "暂无办结方案";
-        String[] split = activeScheme.getWaiterScheme().split(",");
+        List<Integral> integrals = statisticsMapper.getNotice();
+        if (integrals == null) return "error";
         List<String> list = new ArrayList<>();
-        List<String> time = new ArrayList<>();
+        List<Object> time = new ArrayList<>();
         Map<String,Object> map =new HashMap<>();
-        SimpleDateFormat sdf= new SimpleDateFormat("EEE MMM dd HH:mm:ss z yyyy", Locale.ENGLISH);
-        if (split.length<2)return "error";
-            List<SchemePerson> lastPerson = schemeMapper.getLastPerson(activeScheme.getId());
-            if (lastPerson.size()<=0) return "暂无对应人群";
-            for (int i = 0; i < lastPerson.size(); i++) {
-                String name = lastPerson.get(i).getName();
-                for (int j = 0; j < split.length; j++) {
-                    StringBuffer sbf = new StringBuffer();
-                    StringBuffer sbf1 = new StringBuffer();
-                    sbf.append("已").append(split[j]).append(name).append("办理").
-                            append(activeScheme.getMatterName());
-                    try {
-                        sbf1.append(sdf.parse(activeScheme.getEndTime()+"").getTime());
-                    } catch (ParseException e) {
-                        e.printStackTrace();
-                    }
-                    logger.info("时间格式"+sbf1);
-                    list.add(sbf.toString());
-                    time.add(sbf1.toString());
-                    if (list.size()==6){
-                        map.put("name",list);
-                        map.put("time",time);
-                        return JSON.toJSONString(map);
-                    }
-            }
+        for (Integral integral : integrals) {
+            list.add(integral.getNotice());
+            time.add(integral.getTime());
         }
         map.put("name",list);
         map.put("time",time);
         return JSON.toJSONString(map);
     }
+
+
 
     @Override
     public String getSchemePersonCount() {
@@ -154,6 +175,64 @@ public class StatisticsServiceImpl implements StatisticsService {
         List<Object> year = new ArrayList<>();
         List<Object> month = new ArrayList<>();
         List<Object> personCount = new ArrayList<>();
+
+        //后台接口补充没有数据的月份为0，从2018年1月开始补，补到当前月份 新需求修改 3/13日
+        //计算月份相差
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String startDate = "2018-01-01 00:00:00";
+        Date date = new Date(); //当前时间
+        int months = 0;
+        try {
+            months = getMonth(sdf.parse(startDate), date);
+        } catch (ParseException e) {
+            logger.info("计算月份出现异常~~~");
+        }
+        //判断月份是否大于 12
+        if (months>12){
+            for (int i = 1; i <=12 ; i++) {
+                year.add("2018");
+                if (i<10){
+                    month.add("0"+i);
+                }else {
+                    month.add(""+i);
+                }
+                personCount.add(0);
+            }
+            int s = months-12;
+            for (int i = 1; i <=s ; i++) {
+                year.add("2019");
+                if (i<10){
+                    month.add("0"+i);
+                }else {
+                    month.add(""+i);
+                }
+                personCount.add(0);
+            }
+        }
+        //判断月份是否大于 24
+//        if (months>24){
+//            for (int i = 1; i <=12 ; i++) {
+//                year.add("2018");
+//                month.add(i+"");
+//                personCount.add(0);
+//            }
+//            for (int i = 1; i <=12 ; i++) {
+//                year.add("2019");
+//                month.add(i+"");
+//                personCount.add(0);
+//            }
+//            int s = months-24;
+//            for (int i = 1; i <=s ; i++) {
+//                year.add("2020");
+//                month.add(i+"");
+//                personCount.add(0);
+//            }
+//        }
+        if (list.size()>0 && list.size()>1){
+            month.remove(month.size()-(list.size()-1));
+            year.remove(year.size()-(list.size()-1));
+            personCount.remove(personCount.size()-(list.size()-1));
+        }
         for (ActiveScheme activeScheme : list) {
             String matterName = activeScheme.getMatterName();
             String schemeName = activeScheme.getSchemeName();
@@ -162,6 +241,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             month.add(schemeName);
             personCount.add(integral);
         }
+
         map.put("year",year);
         map.put("month",month);
         map.put("personCount",personCount);
@@ -180,12 +260,15 @@ public class StatisticsServiceImpl implements StatisticsService {
                 num=peopleNumber;
                 list.remove(list.get(i));
                 i--;
-            }if (schemeStart.equals(Start.SchemeStart.STARTTWO.getValue())){
-                list.get(i).setPeopleNumber(peopleNumber+=num);
-                list.get(i).setNotice("未通知方案");
-            }if (schemeStart.equals(Start.SchemeStart.STARTTHREE.getValue())){
-                list.get(i).setNotice("已通知方案");
-            }if (schemeStart.equals(Start.SchemeStart.STARTFOUR.getValue())){
+            }
+            if (schemeStart.equals(Start.SchemeStart.STARTTWO.getValue())){
+//                list.get(i).setPeopleNumber(peopleNumber+=num);
+                list.get(i).setNotice("已报批方案");
+            }
+            if (schemeStart.equals(Start.SchemeStart.STARTTHREE.getValue())){
+                list.get(i).setNotice("已批准方案");
+            }
+            if (schemeStart.equals(Start.SchemeStart.STARTFOUR.getValue())){
                 list.get(i).setNotice("已办结方案");
             }
         }
@@ -220,5 +303,47 @@ public class StatisticsServiceImpl implements StatisticsService {
         map.put("schemePerson",schemePerson);
         map.put("matterPserson",matterPserson);
         return JSON.toJSONString(map);
+    }
+
+    @Override
+    public int insertNotice(Integer id) {
+        List<SchemePerson> lastPerson = schemeMapper.getLastPerson(id);
+        ActiveScheme activeScheme = schemeMapper.getSchemeById(id);
+        if (lastPerson.size()<=0) return -1;
+        for (SchemePerson person : lastPerson) {
+            if (person.getMsgStart().equals(Start.contentStart.CODE_YES.getValue())){
+                List<Integral> list = new ArrayList<>();
+                StringBuffer sbf = new StringBuffer();
+                StringBuffer sbf1 = new StringBuffer();
+                sbf.append("已").append(Start.contentStart.APPSTART.getValue()).append(person.getName())
+                        .append("办理").append(activeScheme.getMatterName());
+                sbf1.append("已").append(Start.contentStart.MSGSTART.getValue()).append(person.getName())
+                        .append("办理").append(activeScheme.getMatterName());
+                Integral integral = new Integral(sbf.toString(),new Date());
+                Integral integral2 = new Integral(sbf1.toString(),new Date());
+                list.add(integral);
+                list.add(integral2);
+                int resule = statisticsMapper.insertNotice(list);
+            }
+            if (person.getTelephoneStart().equals(Start.contentStart.CODE_YES.getValue())){
+                List<Integral> list = new ArrayList<>();
+                StringBuffer sbf = new StringBuffer();
+                sbf.append("已").append(Start.contentStart.TELEPHONESTART.getValue()).append(person.getName())
+                        .append("办理").append(activeScheme.getMatterName());
+                Integral integral = new Integral(sbf.toString(),new Date());
+                list.add(integral);
+                int resule = statisticsMapper.insertNotice(list);
+            }
+            if (person.getCustomerStart().equals(Start.contentStart.CODE_YES.getValue())){
+                List<Integral> list = new ArrayList<>();
+                StringBuffer sbf = new StringBuffer();
+                sbf.append("已").append(Start.contentStart.CUSTOMERSTART.getValue()).append(person.getName())
+                        .append("办理").append(activeScheme.getMatterName());
+                Integral integral = new Integral(sbf.toString(),new Date());
+                list.add(integral);
+                int resule = statisticsMapper.insertNotice(list);
+            }
+        }
+        return 1;
     }
 }

@@ -1,7 +1,9 @@
 package com.yanlei.springboot.controller;
 
 import com.alibaba.fastjson.JSONObject;
+import com.yanlei.springboot.model.SchemePerson;
 import com.yanlei.springboot.model.User;
+import com.yanlei.springboot.service.SchemeService.SchemeService;
 import com.yanlei.springboot.util.CookieUtil;
 import com.yanlei.springboot.util.HttpDataUtil;
 import com.yanlei.springboot.util.JsonMethod;
@@ -9,20 +11,21 @@ import com.yanlei.springboot.util.TelephoneUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.ModelAndView;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
 
 /**
  * @Author: x
@@ -32,13 +35,14 @@ import java.util.Map;
 public class Exchange {
     private Logger logger = LoggerFactory.getLogger(Exchange.class);
 
-    private static final String createIdo = "https://tyhy.hzxc.gov.cn:28443/1do/do/createIdo";//测试环境
+//    public static final String createIdo = "https://tyhy.hzxc.gov.cn:28443/1do/do/createIdo";//测试环境
+    public static final String createIdo = "https://tyhy.hzxc.gov.cn:8443/1do/do/createIdo";//正式环境
 
     public static final String  msgUrl = "http://218.108.106.128:8080/web/getsms"; //短信平台
 
-    public static final String getTokenUrl = "http://59.202.68.26/openapi/acc/getToken"; //语音token获取
+    public static final String getTokenUrl = "http://trs.xctrs.gov/openapi/acc/getToken"; //语音token获取
 
-    public static final String planCallUrl = "http://59.202.68.26/openapi/plan/planSave"; //语音发送
+    public static final String planCallUrl = "http://trs.xctrs.gov/openapi/plan/planSave"; //语音发送
 
     public static final String pswd = "LuXi_666";
     public static final String mishi = "TRS_Sign_LX_666";
@@ -105,7 +109,7 @@ public class Exchange {
     @ResponseBody
     public String getToken(HttpServletRequest req){
         String tk = TelephoneUtil.getTokenParam(pswd,mishi);
-        logger.info("tk-------------->>>>>"+tk);//,15145195692
+        logger.info("tk-------------->>>>>"+tk);//,15268531097
         String callParam = TelephoneUtil.getCallParam(pswd, mishi, tk,"17682355442","语音测试内容xxxx","标题内容取方案名称");
         logger.info("callParam-------------------->>>>"+callParam);
         Map<String, Object> strMap = JsonMethod.readValue(callParam, Map.class);
@@ -115,6 +119,20 @@ public class Exchange {
             return "success";
         }
         return callParam;
+    }
+
+    @Autowired
+    SchemeService schemeService;
+
+    @GetMapping("/getSchemePerson2")
+    public ModelAndView getSchemePerson(HttpServletRequest request,  String pages, String rows, HttpServletResponse response){
+        response.addHeader("Access-Control-Allow-Origin", "*");
+        Integer ids = Integer.parseInt(request.getParameter("id"));
+        List<SchemePerson> schemePerson2 = schemeService.getSchemePerson2(ids, pages, rows);
+        Map<String,Object> map = new HashMap<>();
+        map.put("total",schemePerson2.size());
+        map.put("rows",schemePerson2);
+        return new ModelAndView("person",map);
     }
 
 }

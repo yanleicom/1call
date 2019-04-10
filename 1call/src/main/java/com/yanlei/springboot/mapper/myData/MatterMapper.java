@@ -34,7 +34,8 @@ public interface MatterMapper {
     List<ActiveMatter> findAll();
 
     @Select("select id,matter,matter_details AS matterDetails,details," +
-            "dissatisfaction,threshold,street from active_matter where id = #{id}")
+            "dissatisfaction,threshold,street,matter_start AS matterStart,street_manager_id AS streetManagerId,street_manager_name AS streetManagerName," +
+            "business_manager_id AS businessManagerId,business_manager_name AS businessManagerName from active_matter where id = #{id}")
     ActiveMatter getMatterById(int id);
 
     void updateMatter(ActiveMatter activeMatter);

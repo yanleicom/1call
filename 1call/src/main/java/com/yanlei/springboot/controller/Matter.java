@@ -2,6 +2,7 @@ package com.yanlei.springboot.controller;
 
 import com.alibaba.fastjson.JSON;
 import com.github.pagehelper.Page;
+import com.yanlei.springboot.mapper.myData.MatterMapper;
 import com.yanlei.springboot.model.ActiveMatter;
 import com.yanlei.springboot.model.BusinessType;
 import com.yanlei.springboot.service.MatterService.MatterService;
@@ -31,11 +32,12 @@ import java.util.Map;
 @RestController
 public class Matter {
 
-    public static final String createIdo = "https://tyhy.hzxc.gov.cn:28443/1do/do/createIdo";//测试环境
     private Logger logger = LoggerFactory.getLogger(Matter.class);
 
     @Autowired
     MatterService matterService;
+    @Autowired
+    MatterMapper matterMapper;
     /**
     * @Author: x
     * @Date: Created in 15:00 2018/10/30
@@ -82,11 +84,14 @@ public class Matter {
      * 修改分离新建事项是发送工单问题 修改编辑事项发生工单问题
     */
     @PostMapping("/createMatterOneDo")
-    public String createMatterOneDo(Integer id,HttpServletRequest request){
+    public String createMatterOneDo(Integer id,HttpServletRequest request,HttpServletResponse response){
+        response.addHeader("Access-Control-Allow-Origin", "*");
         String name = CookieUtil.getUid(request, "name");
         String showId = CookieUtil.getUid(request, "id");
-        logger.info("name:----->>>"+name);
+        logger.info("name:----->>>"+name); //传 name id
         logger.info("id:----->>>"+showId);
+//        String name = "余念";
+//        String showId = "XzaqamVZPDtAR3WP";
         if (name == null || showId ==null) return "error";
         String result = matterService.createMatterOneDo(id,name,showId);
         return result;
@@ -137,6 +142,10 @@ public class Matter {
         if (matterById.getMatterStart().equals(Start.contentStart.CODE_YES.getValue())){
             return "已发送1do工单不可修改事项";
         }
+        String streetManagerId = activeMatter.getStreetManagerId();
+        if (StringUtils.isEmpty(streetManagerId)) return "请添加“街道负责人”!!!";
+        String streetManagerName = activeMatter.getStreetManagerName();
+        if (StringUtils.isEmpty(streetManagerName)) return "请添加“街道负责人”!!!";
         matterService.updateMatter(activeMatter);
             return "success";
     }

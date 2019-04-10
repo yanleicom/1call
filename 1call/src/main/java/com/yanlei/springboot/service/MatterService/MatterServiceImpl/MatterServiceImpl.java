@@ -19,7 +19,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.yanlei.springboot.controller.Matter.createIdo;
+import static com.yanlei.springboot.controller.Exchange.createIdo;
+
 
 /**
  * @Author: x
@@ -43,37 +44,14 @@ public class MatterServiceImpl implements MatterService {
         */
         String matter = activeMatter.getMatter();
         if (StringUtils.isEmpty(matter)) return "参数matter为空,请指定事项名称!!!";
+        String streetManagerId = activeMatter.getStreetManagerId();
+        if (StringUtils.isEmpty(streetManagerId)) return "请添加“街道负责人”!!!";
+        String streetManagerName = activeMatter.getStreetManagerName();
+        if (StringUtils.isEmpty(streetManagerName)) return "请添加“街道负责人”!!!";
         if (StringUtils.isEmpty(activeMatter.getStreet())) activeMatter.setStreet("武林");
         matterMapper.insertMatter(activeMatter);
         if (activeMatter.getId()!=null){
-//            Integer id = activeMatter.getId();//id
-//            String matter1 = activeMatter.getMatter();//事项名称
-//            String details = activeMatter.getDetails();//表达式
-//            StringBuffer sbf = new StringBuffer();
-//            if (details.contains("$$") ){//前端定义换行和子元素
-//                String s1 = details.replace("$$", " ");
-////                System.out.println(s1);
-//                if (s1.contains("**")){
-//                    String s2 = s1.replace("**", " ");
-//                    sbf.append(s2);
-//                }
-//            }
-//            String street = activeMatter.getStreet();//街道
-//            String O_DESCRIBE = "id:"+id+","+"事项名称:"+matter1+","
-//                    +"申请条件:"+sbf+","+ "街道:"+street;
-//
-//            String oneDo = null;
-//            try {
-//                oneDo = CreateOneDoUtil.createOneDo(O_DESCRIBE,id,name,showId);
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//            String s = HttpDataUtil.JsonSMSPost(oneDo,createIdo);
-//            JSONObject jsonObject = JSONObject.parseObject(s);
-//            int code = Integer.parseInt(jsonObject.getString("code"));
-//            if (code == 200){
                 return "success" ;
-//            }
         }
         return "error";
     }
@@ -111,7 +89,17 @@ public class MatterServiceImpl implements MatterService {
 
     @Override
     public String createMatterOneDo(Integer idd, String name, String showId) {
+        //根据id获取事项
         ActiveMatter activeMatter = matterMapper.getMatterById(idd);
+//        //街道负责人姓名
+//        String streetManagerName = activeMatter.getStreetManagerName();
+//        //街道负责人id
+//        String streetManagerId = activeMatter.getStreetManagerId();
+//        //业务负责人姓名
+//        String businessManagerName = activeMatter.getBusinessManagerName();
+//        //业务负责人id
+//        String businessManagerId = activeMatter.getBusinessManagerId();
+        if (activeMatter.getMatterStart().equals(Start.contentStart.CODE_YES.getValue())) return "事项已发送1do,不可再次发送";
         Integer id = activeMatter.getId();//id
         String matter1 = activeMatter.getMatter();//事项名称
         String details = activeMatter.getDetails();//表达式
@@ -129,6 +117,9 @@ public class MatterServiceImpl implements MatterService {
                 +"申请条件:"+sbf+","+ "街道:"+street;
 
         String oneDo = null;
+        //发送1do的参与人 -- 街道负责人放在前面，业务负责人放在后面  需要去重复
+//        businessManagerName = CreateOneDoUtil.removeDuplicates(streetManagerName,businessManagerName);
+//        businessManagerId = CreateOneDoUtil.removeDuplicates(streetManagerId,businessManagerId);
         try {
             oneDo = CreateOneDoUtil.createOneDo(O_DESCRIBE,id,name,showId);
         } catch (Exception e) {

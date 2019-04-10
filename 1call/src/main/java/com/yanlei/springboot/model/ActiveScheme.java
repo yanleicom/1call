@@ -1,5 +1,7 @@
 package com.yanlei.springboot.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+
 import java.util.Date;
 import java.util.List;
 
@@ -35,6 +37,11 @@ public class ActiveScheme {
     private Date endTime; //方案办结时间(所有人员办理完成即办结)
     private List<String> list; //存入特殊群体 , 分割后 foreach查询条件
     private String street; //关联人员信息查看街道
+    private Date minTime; //人员导入时间最小值
+    private Date maxTime; //人员导入时间最大值
+    private int asId; //定时执行方案关联主键id
+    private Date nextTime; //下一次执行时间
+    private int quartzCount; //定时任务执行的次数
 
     public Integer getId() {
         return id;
@@ -234,5 +241,45 @@ public class ActiveScheme {
 
     public void setStreet(String street) {
         this.street = street;
+    }
+
+    public Date getMinTime() {
+        return minTime;
+    }
+
+    public void setMinTime(Date minTime) {
+        this.minTime = minTime;
+    }
+
+    public Date getMaxTime() {
+        return maxTime;
+    }
+
+    public void setMaxTime(Date maxTime) {
+        this.maxTime = maxTime;
+    }
+
+    public int getAsId() {
+        return asId;
+    }
+
+    public void setAsId(int asId) {
+        this.asId = asId;
+    }
+
+    public Date getNextTime() {
+        return nextTime;
+    }
+
+    public void setNextTime(Date nextTime) {
+        this.nextTime = nextTime;
+    }
+
+    public int getQuartzCount() {
+        return quartzCount;
+    }
+
+    public void setQuartzCount(int quartzCount) {
+        this.quartzCount = quartzCount;
     }
 }
